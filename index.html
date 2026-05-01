@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Liar's Dice Arena</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <span class="die classic mini show-5 brand-die"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+      </span>
+      <div>
+        <div class="title">Liar's Dice Arena</div>
+        <div class="subtitle">
+          <span>Modo Clássico · protótipo jogável</span>
+          <span class="brand-live-meta">
+            <span id="brand-online">0 online</span>
+            <span aria-hidden="true">·</span>
+            <span id="brand-matches">0 partidas</span>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div id="menu-topbar-actions" class="menu-topbar-actions">
+      <button class="menu-profile-chip" type="button">
+        <span class="menu-profile-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="3.5"></circle>
+            <path d="M5 19c1.8-3.1 4.2-4.6 7-4.6S17.2 15.9 19 19"></path>
+          </svg>
+        </span>
+        <span class="menu-profile-copy">
+          <strong id="menu-profile-name">Jogador</strong>
+          <small id="menu-profile-rank">Convidado · Casual</small>
+        </span>
+        <span class="menu-profile-chevron" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 10 5 5 5-5"></path>
+          </svg>
+        </span>
+      </button>
+      <button class="menu-bell-btn" type="button" aria-label="Notificações">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 17H5.5a1 1 0 0 1-.8-1.6l1.3-1.8V10a6 6 0 1 1 12 0v3.6l1.3 1.8A1 1 0 0 1 18.5 17H15"></path>
+          <path d="M10 19a2 2 0 0 0 4 0"></path>
+        </svg>
+      </button>
+    </div>
+    <nav id="game-nav" class="nav hidden">
+      <button id="btn-menu" class="btn hidden">← Menu</button>
+      <button id="btn-new" class="btn hidden">Nova partida</button>
+      <button id="btn-rules" class="btn">Regras</button>
+      <button id="btn-fair" class="btn hidden">Fair-play</button>
+      <button id="btn-ldn" class="btn hidden">LDN</button>
+      <label class="mode-toggle hidden" id="wrap-toggle-3d">
+        <span>3D</span>
+        <input type="checkbox" id="toggle-3d" />
+      </label>
+    </nav>
+  </header>
+
+  <svg class="ui-icon-sprite" aria-hidden="true" width="0" height="0" focusable="false">
+    <symbol id="icon-bolt" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M13 2 6 13h5l-1 9 7-11h-5l1-9Z"></path>
+    </symbol>
+    <symbol id="icon-flame" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M12 2.5c2.6 2.4 4.2 5.1 4.2 8a4.2 4.2 0 1 1-8.4 0c0-2.2 1-4.1 2.9-6 .3 1.5.8 2.5 1.8 3.6 1-1.2 1.4-2.8-.5-5.6Z"></path>
+    </symbol>
+    <symbol id="icon-stopwatch" viewBox="0 0 24 24">
+      <circle cx="12" cy="13" r="6.5" fill="none" stroke="currentColor" stroke-width="1.9"></circle>
+      <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M12 13V9.5M12 13l2.8 1.8M9.5 2.5h5M12 2.5V5"></path>
+    </symbol>
+    <symbol id="icon-hourglass" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M7 3h10M7 21h10M8 3c0 4 4 5.2 4 9s-4 5-4 9M16 3c0 4-4 5.2-4 9s4 5 4 9"></path>
+    </symbol>
+    <symbol id="icon-marathon" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.9"></circle>
+      <circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.9"></circle>
+      <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 2"></path>
+    </symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24">
+      <circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.9"></circle>
+      <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M5.5 18.5c1.8-3 4-4.5 6.5-4.5s4.7 1.5 6.5 4.5"></path>
+    </symbol>
+    <symbol id="icon-trophy" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M8 4h8v3a4 4 0 0 1-8 0V4ZM12 15v5M9 20h6M16 6h2a2 2 0 0 1-2 3M8 6H6a2 2 0 0 0 2 3"></path>
+    </symbol>
+    <symbol id="icon-match" viewBox="0 0 24 24">
+      <rect x="4" y="5" width="8" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"></rect>
+      <rect x="12" y="11" width="8" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"></rect>
+      <circle cx="8" cy="9" r="1" fill="currentColor"></circle>
+      <circle cx="16" cy="15" r="1" fill="currentColor"></circle>
+      <circle cx="16" cy="18" r="1" fill="currentColor"></circle>
+    </symbol>
+    <symbol id="icon-spark" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Zm6.5.5.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z"></path>
+    </symbol>
+    <symbol id="icon-trend" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="m4 16 5-5 4 4 7-7M15 8h5v5"></path>
+    </symbol>
+    <symbol id="icon-star" viewBox="0 0 24 24">
+      <path fill="currentColor" d="m12 2.7 2.85 5.78 6.38.93-4.61 4.49 1.09 6.35L12 17.49l-5.71 3.03 1.09-6.35-4.61-4.49 6.38-.93L12 2.7Z"></path>
+    </symbol>
+  </svg>
+
+  <!-- ============== MENU INICIAL ============== -->
+  <section id="menu" class="menu-screen">
+    <div class="menu-dashboard">
+      <div class="menu-main">
+        <section id="menu-home" class="menu-hero-card">
+          <div class="menu-hero-banner">
+            <div class="menu-hero-copy">
+              <div class="menu-hero-copy-top">
+                <div class="menu-hero-heading">
+                  <h1>Bem-vindo à Arena!</h1>
+                  <p>Blefe, dedução e sorte — jogue contra bots num protótipo local inspirado no lichess.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="menu-hero-actions">
+              <button id="hero-create-room" class="menu-feature-card" type="button">
+                <span class="menu-feature-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 19v-2.5A2.5 2.5 0 0 0 12.5 14H8a3 3 0 1 1 3-3"></path>
+                    <path d="M15 7v8"></path>
+                    <path d="M11 11h8"></path>
+                  </svg>
+                </span>
+                <span class="menu-feature-copy">
+                  <strong>Criar partida<br>na sala de espera</strong>
+                  <small>Crie uma sala e convide outros jogadores.</small>
+                </span>
+              </button>
+
+              <button id="hero-challenge-friend" class="menu-feature-card" type="button">
+                <span class="menu-feature-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m7 7 10 10"></path>
+                    <path d="m17 7-4 4"></path>
+                    <path d="m7 17 4-4"></path>
+                  </svg>
+                </span>
+                <span class="menu-feature-copy">
+                  <strong>Desafie um amigo</strong>
+                  <small>Convide um amigo para uma partida direta.</small>
+                </span>
+              </button>
+
+              <button id="hero-play-bot" class="menu-feature-card" type="button">
+                <span class="menu-feature-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="5" width="14" height="14" rx="2.5"></rect>
+                    <circle cx="10" cy="12" r="1"></circle>
+                    <circle cx="14" cy="12" r="1"></circle>
+                    <path d="M9 16h6"></path>
+                  </svg>
+                </span>
+                <span class="menu-feature-copy">
+                  <strong>Jogar contra Bots</strong>
+                  <small>Escolha a dificuldade e desafie nossos bots.</small>
+                </span>
+              </button>
+
+              <button id="hero-tutorial" class="menu-feature-card" type="button">
+                <span class="menu-feature-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 5.5h10a3 3 0 0 1 3 3V19H8a3 3 0 0 1-3-3V5.5Z"></path>
+                    <path d="M8 9h7"></path>
+                    <path d="M8 12h5"></path>
+                    <path d="M18 8.5h1a2 2 0 0 1 2 2V19h-3"></path>
+                  </svg>
+                </span>
+                <span class="menu-feature-copy">
+                  <strong>Tutorial<br>interativo</strong>
+                  <small>Aprenda lances, Dudo e Calza jogando.</small>
+                </span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section id="menu-matchmaking" class="menu-surface menu-search-panel hidden" aria-live="polite">
+          <div class="menu-search-head">
+            <div>
+              <h2 id="menu-search-title">Buscando partida</h2>
+              <p id="menu-search-subtitle">Entrando na fila do pareamento rápido.</p>
+            </div>
+            <button id="menu-search-cancel" class="btn" type="button">Cancelar busca</button>
+          </div>
+
+          <div class="menu-search-shell">
+            <div class="menu-search-spinner" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="menu-search-card">
+              <div class="menu-search-row">
+                <span>Preset</span>
+                <strong id="menu-search-preset">Rápida · 5+0</strong>
+              </div>
+              <div class="menu-search-row">
+                <span>Jogadores online</span>
+                <strong id="menu-search-online">0</strong>
+              </div>
+              <div class="menu-search-row">
+                <span>Partidas abertas</span>
+                <strong id="menu-search-matches">0</strong>
+              </div>
+              <div class="menu-search-row">
+                <span>Tempo na fila</span>
+                <strong id="menu-search-elapsed">00:00</strong>
+              </div>
+              <div class="menu-search-row">
+                <span>Status</span>
+                <strong id="menu-search-status">Aguardando jogadores compatíveis…</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="menu-search-foot">
+            <small id="menu-search-footnote">Se a fila demorar, o backend pode fechar a mesa com bots para você testar o protótipo.</small>
+          </div>
+        </section>
+
+        <section id="menu-play-hub" class="menu-surface play-hub-panel">
+          <div class="play-hub-tabs" role="tablist" aria-label="Opções de jogo">
+            <button
+              id="menu-quick"
+              class="play-hub-tab active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="play-pane-quick"
+              data-menu-tab="quick"
+            >
+              <span class="play-hub-tab-copy">
+                <strong>Pareamento rápido</strong>
+                <small>Encontre uma partida com jogadores online agora.</small>
+              </span>
+            </button>
+            <button
+              id="menu-rooms"
+              class="play-hub-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="play-pane-rooms"
+              data-menu-tab="rooms"
+            >
+              <span class="play-hub-tab-copy">
+                <strong>Salas de espera</strong>
+                <small>Veja e entre em salas criadas por outros jogadores.</small>
+              </span>
+            </button>
+          </div>
+
+          <div class="play-hub-body">
+            <div id="play-pane-quick" class="play-hub-pane active" role="tabpanel" aria-labelledby="menu-quick" data-menu-pane="quick">
+              <div class="quickmatch-grid">
+                <button class="quickmatch-mode active" type="button" data-queue-label="Rápida" data-minutes="5" data-increment="0" data-mode-key="quick-5-0">
+                  <span class="quickmatch-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-bolt"></use></svg></span>
+                  <strong>Rápida</strong>
+                  <small>5 min</small>
+                  <small>Por jogador</small>
+                  <em>—</em>
+                </button>
+                <button class="quickmatch-mode" type="button" data-queue-label="Blitz" data-minutes="3" data-increment="0" data-mode-key="blitz-3-0">
+                  <span class="quickmatch-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-flame"></use></svg></span>
+                  <strong>Blitz</strong>
+                  <small>3 min</small>
+                  <small>Por jogador</small>
+                  <em>—</em>
+                </button>
+                <button class="quickmatch-mode" type="button" data-queue-label="Rápida+" data-minutes="10" data-increment="0" data-mode-key="rapid-10-0">
+                  <span class="quickmatch-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-stopwatch"></use></svg></span>
+                  <strong>Rápida+</strong>
+                  <small>10 min</small>
+                  <small>Por jogador</small>
+                  <em>—</em>
+                </button>
+                <button class="quickmatch-mode" type="button" data-queue-label="Clássica" data-minutes="15" data-increment="0" data-mode-key="classic-15-0">
+                  <span class="quickmatch-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-hourglass"></use></svg></span>
+                  <strong>Clássica</strong>
+                  <small>15 min</small>
+                  <small>Por jogador</small>
+                  <em>—</em>
+                </button>
+                <button class="quickmatch-mode" type="button" data-queue-label="Maratona" data-minutes="30" data-increment="0" data-mode-key="marathon-30-0">
+                  <span class="quickmatch-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-marathon"></use></svg></span>
+                  <strong>Maratona</strong>
+                  <small>30 min</small>
+                  <small>Por jogador</small>
+                  <em>—</em>
+                </button>
+              </div>
+
+              <button id="btn-play" class="btn btn-primary quickmatch-cta">Encontrar partida</button>
+
+              <div class="quickmatch-footnote">
+                <span>Jogando como</span>
+                <span class="quickmatch-profile">
+                  <span class="quickmatch-profile-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="8" r="3.5"></circle>
+                      <path d="M5 19c1.8-3.1 4.2-4.6 7-4.6S17.2 15.9 19 19"></path>
+                    </svg>
+                  </span>
+                Convidado · Casual
+                </span>
+                <span class="quickmatch-stars rating-stars" aria-hidden="true">
+                  <svg class="rating-star filled" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
+                  <svg class="rating-star filled" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
+                  <svg class="rating-star filled" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
+                  <svg class="rating-star empty" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
+                  <svg class="rating-star empty" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
+                </span>
+                <span>Sem rating</span>
+              </div>
+            </div>
+
+            <div id="play-pane-rooms" class="play-hub-pane" role="tabpanel" aria-labelledby="menu-rooms" data-menu-pane="rooms" hidden>
+              <div id="rooms-list" class="rooms-list"></div>
+              <div id="rooms-empty" class="rooms-empty hidden">Nenhuma sala aberta agora. Crie a primeira sala e convide alguém.</div>
+
+              <button class="rooms-more-btn" type="button">
+                <span>Ver todas as salas</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="menu-rail">
+        <section id="menu-level" class="menu-surface rail-card">
+          <div class="menu-panel-head compact">
+            <div>
+              <h2>Seu nível</h2>
+            </div>
+          </div>
+          <div class="level-summary">
+            <div class="level-badge">
+              <div class="level-badge-ring">
+                <span class="die classic mini show-5"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+              </div>
+            </div>
+            <div class="level-copy">
+              <strong>Convidado · Casual</strong>
+              <div class="level-stars">
+                <span class="rating-stars" aria-hidden="true">
+                  <svg class="rating-star filled" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
+                  <svg class="rating-star filled" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
+                  <svg class="rating-star filled" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
+                  <svg class="rating-star empty" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
+                  <svg class="rating-star empty" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
+                </span>
+                <span>Sem rating</span>
+              </div>
+            </div>
+          </div>
+          <div class="level-progress">
+            <span class="level-progress-fill"></span>
+          </div>
+          <p class="level-progress-copy">XP e níveis entram quando o perfil persistente existir.</p>
+        </section>
+
+        <section id="menu-stats" class="menu-surface rail-card">
+          <div class="menu-panel-head with-action">
+            <div>
+              <h2>Estatísticas</h2>
+            </div>
+            <button class="rail-link-btn" type="button">Ver todas</button>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-box">
+              <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-trophy"></use></svg></span>
+              <small>Vitórias</small>
+              <strong>—</strong>
+            </div>
+            <div class="stat-box">
+              <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-match"></use></svg></span>
+              <small>Partidas</small>
+              <strong>—</strong>
+            </div>
+            <div class="stat-box">
+              <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-spark"></use></svg></span>
+              <small>Sequência</small>
+              <strong>—</strong>
+            </div>
+            <div class="stat-box">
+              <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-trend"></use></svg></span>
+              <small>Win rate</small>
+              <strong>—</strong>
+            </div>
+          </div>
+        </section>
+
+        <section id="menu-friends" class="menu-surface rail-card">
+          <div class="menu-panel-head with-action">
+            <div>
+              <h2>Amigos</h2>
+            </div>
+            <button class="rail-link-btn" type="button">Ver todos</button>
+          </div>
+
+          <div class="friends-list">
+            <div class="rooms-empty">Amigos entram quando contas persistentes forem ativadas.</div>
+          </div>
+        </section>
+
+        <section id="menu-activity" class="menu-surface rail-card">
+          <div class="menu-panel-head with-action">
+            <div>
+              <h2>Atividade recente</h2>
+            </div>
+            <button class="rail-link-btn" type="button">Ver todas</button>
+          </div>
+
+          <div class="activity-list">
+            <div class="rooms-empty">A atividade aparece aqui depois que partidas forem persistidas.</div>
+          </div>
+        </section>
+      </aside>
+
+      <div class="menu-hidden-config" aria-hidden="true">
+        <label>Oponentes
+          <select id="cfg-bots">
+            <option value="1">1 bot</option>
+            <option value="2">2 bots</option>
+            <option value="3" selected>3 bots</option>
+            <option value="4">4 bots</option>
+            <option value="5">5 bots</option>
+          </select>
+        </label>
+        <label>Dificuldade
+          <select id="cfg-level">
+            <option value="1">Nível 1 · Novato</option>
+            <option value="2">Nível 2 · Aprendiz</option>
+            <option value="3" selected>Nível 3 · Casual</option>
+            <option value="4">Nível 4 · Estável</option>
+            <option value="5">Nível 5 · Intermediário</option>
+            <option value="6">Nível 6 · Avançado</option>
+            <option value="7">Nível 7 · Mestre</option>
+            <option value="8">Nível 8 · Elite</option>
+          </select>
+        </label>
+        <label>Dados iniciais
+          <select id="cfg-dice">
+            <option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option>
+          </select>
+        </label>
+        <label><input type="checkbox" id="cfg-wild" checked /> Ases são coringas</label>
+        <label><input type="checkbox" id="cfg-calza" /> Calza habilitado</label>
+        <label><input type="checkbox" id="cfg-3d" /> Começar em 3D</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== PARTIDA ============== -->
+  <main class="layout hidden" id="game-layout">
+    <aside class="panel panel-left">
+      <section class="game-panel-section players-section" id="players-section">
+        <h3>Jogadores</h3>
+        <ul id="seat-list" class="seats"></ul>
+      </section>
+
+      <section class="game-panel-section turn-section" id="turn-section">
+        <div class="panel-section-head">
+          <h3>Turno atual</h3>
+          <button class="panel-collapse-btn" type="button" data-collapse-target="turn-section" aria-expanded="true" aria-label="Recolher turno atual">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="section-collapse-body">
+          <div id="turn-card" class="turn-card">—</div>
+        </div>
+      </section>
+
+      <section class="game-panel-section last-action-section" id="last-action-section">
+        <h3 id="last-action-title" class="section-title-with-meta">Último lance <span id="last-action-meta"></span></h3>
+        <div id="current-bid" class="last-action-card">—</div>
+      </section>
+    </aside>
+
+    <section class="table-area">
+      <div id="table-2d" class="table table-wood"></div>
+      <canvas id="table-3d" class="table hidden"></canvas>
+
+      <div id="actions" class="actions">
+        <div class="bid-builder">
+          <div class="bid-row">
+            <label>Quantidade</label>
+            <div class="stepper">
+              <button data-step="q" data-dir="-1">−</button>
+              <span id="bid-q">1</span>
+              <button data-step="q" data-dir="1">+</button>
+            </div>
+          </div>
+          <div class="bid-row">
+            <label>Valor</label>
+            <div class="face-picker" id="face-picker">
+              <button data-face="1" class="face"><span class="die classic mini show-1"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span><em>★</em></button>
+              <button data-face="2" class="face"><span class="die classic mini show-2"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></button>
+              <button data-face="3" class="face"><span class="die classic mini show-3"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></button>
+              <button data-face="4" class="face"><span class="die classic mini show-4"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></button>
+              <button data-face="5" class="face"><span class="die classic mini show-5"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></button>
+              <button data-face="6" class="face"><span class="die classic mini show-6"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></button>
+            </div>
+          </div>
+          <div class="bid-hint" id="bid-hint"></div>
+        </div>
+        <div class="action-buttons">
+          <button id="btn-bid" class="btn btn-primary">Fazer lance</button>
+          <button id="btn-dudo" class="btn btn-danger">Dudo!</button>
+          <button id="btn-calza" class="btn btn-warn hidden">Calza!</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel panel-right" id="game-log-section">
+      <div class="panel-section-head">
+        <h3>Log da partida</h3>
+        <button class="panel-collapse-btn" type="button" data-collapse-target="game-log-section" aria-expanded="true" aria-label="Recolher log da partida">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="section-collapse-body">
+        <ol id="log" class="log"></ol>
+      </div>
+    </aside>
+  </main>
+
+  <nav class="mobile-game-dock" id="mobile-game-dock" aria-label="Navegação móvel da partida">
+    <button class="mobile-dock-btn active" type="button" data-mobile-nav="mesa">
+      <span class="mobile-dock-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 8.5h16"></path>
+          <path d="M6.5 5h11L20 8.5v8.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8.5L6.5 5Z"></path>
+        </svg>
+      </span>
+      <span>Mesa</span>
+    </button>
+    <button class="mobile-dock-btn" type="button" data-mobile-nav="estatisticas">
+      <span class="mobile-dock-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 20V11"></path>
+          <path d="M12 20V4"></path>
+          <path d="M18 20v-7"></path>
+        </svg>
+      </span>
+      <span>Estatísticas</span>
+    </button>
+    <button class="mobile-dock-btn" type="button" data-mobile-nav="configuracoes">
+      <span class="mobile-dock-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3.2"></circle>
+          <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 1 1-1.7 1.7l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V19a1.2 1.2 0 1 1-2.4 0v-.1a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H5a1.2 1.2 0 1 1 0-2.4h.1a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 1.7-1.7l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V5a1.2 1.2 0 1 1 2.4 0v.1a1 1 0 0 0 .7.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 1.7l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H19a1.2 1.2 0 1 1 0 2.4h-.1a1 1 0 0 0-.9.7 1 1 0 0 0 .2 1.1Z"></path>
+        </svg>
+      </span>
+      <span>Configurações</span>
+    </button>
+  </nav>
+
+  <dialog id="dlg">
+    <div class="dlg-body">
+      <h2 id="dlg-title"></h2>
+      <div id="dlg-content"></div>
+      <div class="dlg-actions">
+        <button id="dlg-close" class="btn">Fechar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <footer class="footer">
+    <span>Open-source · AGPLv3 · <a href="#" id="verify-link">RNG verificado por commit-reveal</a></span>
+  </footer>
+
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O" crossorigin="anonymous" defer></script>
+  <script src="js/rng.js" defer></script>
+  <script src="js/game.js" defer></script>
+  <script src="js/bot.js" defer></script>
+  <script src="js/ldn.js" defer></script>
+  <script src="js/ui.js" defer></script>
+  <script src="js/app.core.js" defer></script>
+  <script src="js/app.online.api.js" defer></script>
+  <script src="js/app.online.match.js" defer></script>
+  <script src="js/app.online.rooms.js" defer></script>
+  <script src="js/app.online.queue.js" defer></script>
+  <script src="js/app.online.js" defer></script>
+  <script src="js/app.dialogs.js" defer></script>
+  <script src="js/app.tutorial.js" defer></script>
+  <script src="js/app.flow.js" defer></script>
+  <script src="js/app.bindings.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+@charset "utf-8";
+
+/* Manifesto de estilos da aplicacao */
+@import url("./tokens.css");
+@import url("./base.css");
+@import url("./chrome.css");
+@import url("./menu.css");
+@import url("./game.css");
+@import url("./dialog.css");

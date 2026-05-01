@@ -1,0 +1,133 @@
+/* Base, reset e scrollbars globais */
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: linear-gradient(180deg, var(--scrollbar-track-edge) 0%, var(--scrollbar-track) 100%);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--scrollbar-thumb-hover) 0%, var(--scrollbar-thumb) 100%);
+  border: 2px solid var(--scrollbar-track);
+  border-radius: 999px;
+  min-height: 28px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #a97f41 0%, var(--scrollbar-thumb-hover) 100%);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #be934f 0%, var(--scrollbar-thumb-active) 100%);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  scrollbar-gutter: stable;
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at top, #241c10 0%, var(--bg) 70%),
+    var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body.game-active {
+  overflow: hidden;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+
+h2,
+h3 {
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 12px;
+  letter-spacing: .1em;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+}
+
+.section-title-with-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+#last-action-meta {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.footer {
+  padding: 6px 18px;
+  font-size: 10px;
+  color: var(--fg-dim);
+  border-top: 1px solid var(--border);
+  background: var(--bg-2);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.footer a {
+  color: inherit;
+}
+
+.footer a:hover {
+  color: #dcc39a;
+  text-decoration: none;
+}
+
+.hidden {
+  display: none !important;
+}

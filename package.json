@@ -1,0 +1,11 @@
+{
+  "name": "liars-dice-arena",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Protótipo local de Liar's Dice Arena com backend zero-deps para lobby, convites e matchmaking.",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js",
+    "test": "node scripts/smoke-test.js"
+  }
+}
