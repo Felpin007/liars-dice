@@ -75,6 +75,25 @@
         timeout: "ev-dudo",
         end: "ev-end",
       }[entry.type] || "ev-round";
+      if (entry.type === "bid" && entry.bid && Number.isInteger(entry.seat)) {
+        const localSeat = toLocalSeat(entry.seat);
+        const localBid = remapBid(entry.bid);
+        return `<li class="${cls}">${app.bidLogHtml(localSeat, localBid, entry.timeLeftMs || 0)}</li>`;
+      }
+      if (entry.type === "bid") {
+        const parsed = String(entry.text || "").match(/^(.*?)\s+fez lance\s+(\d+)\s*x\s*([1-6])\.?$/i);
+        if (parsed) {
+          const [, rawName, q, v] = parsed;
+          const bid = { q: Number(q), v: Number(v) };
+          return `<li class="${cls}">
+            <div class="log-turn-head">
+              <span class="log-turn-label">Turno de ${app.esc(rawName)}</span>
+              ${app.actionTimeHtml(entry.timeLeftMs || 0)}
+            </div>
+            <div class="log-turn-detail">→ ${app.esc(rawName)} fez um lance: ${app.bidHtml(bid)}</div>
+          </li>`;
+        }
+      }
       return `<li class="${cls}">${app.esc(entry.text)}</li>`;
     }).join("");
     list.scrollTop = list.scrollHeight;

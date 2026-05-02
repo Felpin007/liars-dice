@@ -101,12 +101,13 @@ function snapshotHands(match) {
   }));
 }
 
-function addLog(match, type, text) {
+function addLog(match, type, text, details = {}) {
   match.log.push({
     seq: ++match.seq,
     type,
     text,
     at: Date.now(),
+    ...details,
   });
   if (match.log.length > 160) match.log = match.log.slice(-160);
 }
@@ -265,7 +266,11 @@ function placeBid(match, seat, bid, now = Date.now()) {
   match.bidHistory.push(entry);
   currentRound(match).bids.push(entry);
   match.lastAction = { type: "bid", seat, bid: { q: normalized.q, v: normalized.v }, timeLeftMs };
-  addLog(match, "bid", `${match.players[seat].name} fez lance ${normalized.q}x${normalized.v}.`);
+  addLog(match, "bid", `${match.players[seat].name} fez lance ${normalized.q}x${normalized.v}.`, {
+    seat,
+    bid: { q: normalized.q, v: normalized.v },
+    timeLeftMs,
+  });
   match.turnSeat = nextAliveSeat(match, seat);
   beginTurn(match, now);
   return { ok: true, resolved: false };
