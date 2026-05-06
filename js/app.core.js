@@ -31,6 +31,16 @@ window.LDAApp = (() => {
       localToServerSeat: null,
       serverToLocalSeat: null,
     },
+    account: {
+      configured: false,
+      client: null,
+      session: null,
+      user: null,
+      profile: null,
+      history: [],
+      avatarBucket: "avatars",
+      refreshAfterMatchId: null,
+    },
   };
 
   const constants = {

@@ -3,6 +3,13 @@ const path = require("node:path");
 const { MIME_TYPES, ROOT_DIR } = require("./config");
 const { json } = require("./http");
 
+function isForbiddenStaticPath(filePath) {
+  const relative = path.relative(ROOT_DIR, filePath);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) return true;
+  const parts = relative.split(path.sep);
+  return parts.some((part) => part.startsWith(".")) || /\.(env|pem|key|crt)$/i.test(relative);
+}
+
 function serveStatic(req, res, pathname) {
   let decodedPathname = pathname;
   try {
@@ -13,7 +20,7 @@ function serveStatic(req, res, pathname) {
   }
 
   let filePath = path.join(ROOT_DIR, decodedPathname === "/" ? "index.html" : decodedPathname.slice(1));
-  if (!filePath.startsWith(ROOT_DIR)) {
+  if (isForbiddenStaticPath(filePath)) {
     json(res, 403, { error: "forbidden" });
     return;
   }

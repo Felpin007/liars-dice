@@ -13,6 +13,8 @@
       "Content-Type": "application/json",
       ...(options.headers || {}),
     };
+    const token = await app.supabaseAuth?.accessToken?.();
+    if (token) headers.Authorization = `Bearer ${token}`;
     if (isUnsafeMethod(method) && app.state.online.csrfToken) {
       headers["X-CSRF-Token"] = app.state.online.csrfToken;
     }
@@ -49,11 +51,14 @@
     if (!profile) return;
     app.state.online.clientId = profile.clientId;
     app.state.online.username = profile.username;
+    app.state.online.avatarUrl = profile.avatarUrl || "";
     localStorage.setItem(STORAGE_USERNAME, profile.username);
-    const nameEl = app.$("#menu-profile-name");
-    const rankEl = app.$("#menu-profile-rank");
-    if (nameEl) nameEl.textContent = profile.username;
-    if (rankEl) rankEl.textContent = "Lobby online · Casual";
+    if (!app.state.account.profile) {
+      const nameEl = app.$("#menu-profile-name");
+      const rankEl = app.$("#menu-profile-rank");
+      if (nameEl) nameEl.textContent = profile.displayName || profile.username;
+      if (rankEl) rankEl.textContent = profile.supabaseUserId ? "Conta conectada" : "Lobby online · Casual";
+    }
   }
 
   function setStats(stats) {
@@ -132,6 +137,7 @@
     if (snapshot.currentRoom) {
       app.onlineRooms.syncRoomDialog(snapshot.currentRoom, app.absoluteInviteLink(snapshot.currentRoom.code));
     }
+    app.refreshAccount?.().catch((error) => console.warn("Perfil persistente indisponivel:", error));
   }
 
   app.onlineCommon = {

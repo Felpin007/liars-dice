@@ -25,8 +25,8 @@
       </div>
     </div>
     <div id="menu-topbar-actions" class="menu-topbar-actions">
-      <button class="menu-profile-chip" type="button">
-        <span class="menu-profile-avatar" aria-hidden="true">
+      <button id="menu-profile-chip" class="menu-profile-chip" type="button">
+        <span id="menu-profile-avatar" class="menu-profile-avatar" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="8" r="3.5"></circle>
             <path d="M5 19c1.8-3.1 4.2-4.6 7-4.6S17.2 15.9 19 19"></path>
@@ -301,7 +301,7 @@
 
               <div class="quickmatch-footnote">
                 <span>Jogando como</span>
-                <span class="quickmatch-profile">
+                <span id="quickmatch-profile-label" class="quickmatch-profile">
                   <span class="quickmatch-profile-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                       <circle cx="12" cy="8" r="3.5"></circle>
@@ -317,7 +317,7 @@
                   <svg class="rating-star empty" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
                   <svg class="rating-star empty" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
                 </span>
-                <span>Sem rating</span>
+                <span id="quickmatch-rating-label">Sem rating</span>
               </div>
             </div>
 
@@ -348,7 +348,7 @@
               </div>
             </div>
             <div class="level-copy">
-              <strong>Convidado · Casual</strong>
+              <strong id="level-profile-title">Convidado · Casual</strong>
               <div class="level-stars">
                 <span class="rating-stars" aria-hidden="true">
                   <svg class="rating-star filled" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
@@ -357,14 +357,14 @@
                   <svg class="rating-star empty" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
                   <svg class="rating-star empty" viewBox="0 0 24 24"><use href="#icon-star"></use></svg>
                 </span>
-                <span>Sem rating</span>
+                <span id="level-rating-label">Sem rating</span>
               </div>
             </div>
           </div>
           <div class="level-progress">
             <span class="level-progress-fill"></span>
           </div>
-          <p class="level-progress-copy">XP e níveis entram quando o perfil persistente existir.</p>
+          <p id="level-progress-copy" class="level-progress-copy">XP e níveis entram quando o perfil persistente existir.</p>
         </section>
 
         <section id="menu-stats" class="menu-surface rail-card">
@@ -379,22 +379,22 @@
             <div class="stat-box">
               <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-trophy"></use></svg></span>
               <small>Vitórias</small>
-              <strong>—</strong>
+              <strong id="stat-wins">—</strong>
             </div>
             <div class="stat-box">
               <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-match"></use></svg></span>
               <small>Partidas</small>
-              <strong>—</strong>
+              <strong id="stat-games">—</strong>
             </div>
             <div class="stat-box">
               <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-spark"></use></svg></span>
               <small>Sequência</small>
-              <strong>—</strong>
+              <strong id="stat-streak">—</strong>
             </div>
             <div class="stat-box">
               <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-trend"></use></svg></span>
               <small>Win rate</small>
-              <strong>—</strong>
+              <strong id="stat-winrate">—</strong>
             </div>
           </div>
         </section>
@@ -420,7 +420,7 @@
             <button class="rail-link-btn" type="button">Ver todas</button>
           </div>
 
-          <div class="activity-list">
+          <div id="activity-list" class="activity-list">
             <div class="rooms-empty">A atividade aparece aqui depois que partidas forem persistidas.</div>
           </div>
         </section>
@@ -584,12 +584,14 @@
   </footer>
 
   <script src="https://unpkg.com/three@0.160.0/build/three.min.js" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="js/rng.js" defer></script>
   <script src="js/game.js" defer></script>
   <script src="js/bot.js" defer></script>
   <script src="js/ldn.js" defer></script>
   <script src="js/ui.js" defer></script>
   <script src="js/app.core.js" defer></script>
+  <script src="js/app.supabase.js" defer></script>
   <script src="js/app.online.api.js" defer></script>
   <script src="js/app.online.match.js" defer></script>
   <script src="js/app.online.rooms.js" defer></script>

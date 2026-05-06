@@ -155,6 +155,7 @@ function createMatch(options) {
         id: seat,
         seat,
         clientId: human ? human.clientId : null,
+        supabaseUserId: human ? human.supabaseUserId || null : null,
         name,
         isBot: botSeatSet.has(seat),
         botLevel: botSeatSet.has(seat) ? clampNumber(options.botLevel, 1, 8, BOT_LEVEL_DEFAULT) : 0,
@@ -288,6 +289,7 @@ function resolveDudo(match, challengerSeat, now = Date.now()) {
   const real = countInPool(match, bid.v);
   const claimTrue = real >= bid.q;
   const loserSeat = claimTrue ? challengerSeat : bid.seat;
+  const revealedHands = snapshotHands(match);
   const loser = match.players[loserSeat];
   if (loser.diceCount > 0) loser.diceCount -= 1;
   if (loser.diceCount <= 0) loser.alive = false;
@@ -300,7 +302,7 @@ function resolveDudo(match, challengerSeat, now = Date.now()) {
     claimTrue,
     loserSeat,
     eliminatedSeat: loser.alive ? null : loserSeat,
-    hands: snapshotHands(match),
+    hands: revealedHands,
   };
   finishRound(match, outcome, loserSeat, now);
   match.lastAction = { type: "dudo", seat: challengerSeat, bid: { ...bid }, timeLeftMs };
@@ -321,6 +323,7 @@ function resolveCalza(match, callerSeat, now = Date.now()) {
   const real = countInPool(match, bid.v);
   const exact = real === bid.q;
   const caller = match.players[callerSeat];
+  const revealedHands = snapshotHands(match);
   if (exact) {
     caller.diceCount = Math.min(match.config.startingDice, caller.diceCount + 1);
   } else {
@@ -335,7 +338,7 @@ function resolveCalza(match, callerSeat, now = Date.now()) {
     real,
     exact,
     eliminatedSeat: caller.alive ? null : callerSeat,
-    hands: snapshotHands(match),
+    hands: revealedHands,
   };
   finishRound(match, outcome, callerSeat, now);
   match.lastAction = { type: "calza", seat: callerSeat, bid: { ...bid }, timeLeftMs };
@@ -349,6 +352,7 @@ function resolveTimeout(match, timedOutSeat, now = Date.now()) {
 
   commitActionTime(match, timedOutSeat, now, false);
   const player = match.players[timedOutSeat];
+  const revealedHands = snapshotHands(match);
   if (player.diceCount > 0) player.diceCount -= 1;
   if (player.diceCount <= 0) player.alive = false;
 
@@ -360,7 +364,7 @@ function resolveTimeout(match, timedOutSeat, now = Date.now()) {
     loserSeat: timedOutSeat,
     bid,
     eliminatedSeat: player.alive ? null : timedOutSeat,
-    hands: snapshotHands(match),
+    hands: revealedHands,
   };
   finishRound(match, outcome, timedOutSeat, now);
   match.lastAction = { type: "timeout", seat: timedOutSeat, bid, timeLeftMs: 0 };

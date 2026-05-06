@@ -182,11 +182,31 @@
     renderServerLog(snapshot.log);
     UI.renderAll();
     UI.updateLive(match);
+    const lastRound = match.rounds?.[match.rounds.length - 1];
+    const outcome = lastRound?.outcome;
+    if (snapshot.revealAll && outcome) {
+      const revealKey = `${snapshot.matchId}|${lastRound.number}|${outcome.type}|${outcome.real ?? ""}`;
+      if (app.state.online.lastRevealKey !== revealKey) {
+        app.state.online.lastRevealKey = revealKey;
+        const kind = outcome.type === "dudo_resolved" ? "dudo"
+          : outcome.type === "calza_resolved" ? "calza"
+            : "timeout";
+        UI.playRevealSequence?.(match, outcome, kind).then(() => {
+          if (app.getMatch()?.matchId === match.matchId && app.getMatch()?.phase === "ended") {
+            UI.showMatchResult?.(app.getMatch(), { localSeat: 0 });
+          }
+        });
+      }
+    }
     if (snapshot.phase === "ended") {
       const winner = Number.isInteger(match.winnerSeat) && match.players[match.winnerSeat]
         ? match.players[match.winnerSeat].name
         : "-";
-      UI.showRevealBanner(`Partida encerrada — vencedor: ${winner}`, "ok");
+      if (!outcome) UI.showMatchResult?.(match, { localSeat: 0 });
+      if (app.state.account.refreshAfterMatchId !== snapshot.matchId) {
+        app.state.account.refreshAfterMatchId = snapshot.matchId;
+        window.setTimeout(() => app.refreshAccount?.(), 1800);
+      }
     }
   }
 

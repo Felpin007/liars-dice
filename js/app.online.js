@@ -127,10 +127,12 @@
   async function bootstrapOnline() {
     const preferredName = app.onlineCommon.storedUsername() || app.onlineCommon.defaultUsername();
     try {
+      const supabaseAccessToken = await app.supabaseAuth?.accessToken?.();
       const snapshot = await app.api("/api/bootstrap", {
         method: "POST",
         body: {
           username: preferredName,
+          supabaseAccessToken,
         },
       });
       app.state.online.ready = true;

@@ -1,6 +1,6 @@
 # Liar's Dice Arena
 
-Protótipo jogável de uma arena online de **Liar's Dice** inspirado na clareza, velocidade e espírito aberto de plataformas como lichess. O projeto combina modo local contra bots, lobby online, convites por link, pareamento rápido e partidas autoritativas servidas por um backend Node.js sem dependências externas.
+Protótipo jogável de uma arena online de **Liar's Dice** inspirado na clareza, velocidade e espírito aberto de plataformas como lichess. O projeto combina modo local contra bots, lobby online, convites por link, pareamento rápido, partidas autoritativas e integração opcional com Supabase para login, perfil, avatar, rating e histórico.
 
 ## Estado do projeto
 
@@ -17,11 +17,15 @@ Este repositório ainda está em fase inicial, mas já possui uma base funcional
 - convites por link;
 - fila de pareamento rápido;
 - partidas online com servidor autoritativo;
+- login com Google via Supabase Auth;
+- perfil persistente com avatar;
+- rating e estatísticas persistidas;
+- histórico recente de partidas;
 - RNG com commit-reveal para verificação de fair-play;
 - exportação de partida em LDN;
 - smoke test para sintaxe e fluxo autoritativo básico.
 
-Ainda não é uma aplicação pronta para produção. Faltam persistência em banco, autenticação real, rating, reconexão robusta, moderação, testes amplos e infraestrutura de deploy.
+Ainda não é uma aplicação pronta para produção. Faltam reconexão robusta, moderação, testes amplos, regras de rating mais maduras e infraestrutura de deploy.
 
 ## Como rodar
 
@@ -29,7 +33,7 @@ Requisitos:
 
 - Node.js 18 ou superior.
 
-Instale nada: o projeto atual é zero-deps.
+Instale nada: o projeto atual continua sem dependências npm obrigatórias.
 
 ```bash
 npm start
@@ -89,6 +93,7 @@ O backend fica em `server/` e usa apenas módulos nativos do Node.js. Ele oferec
 - rate limit simples em memória;
 - salas, convites e fila;
 - partidas autoritativas;
+- persistência opcional em Supabase;
 - limpeza periódica de clientes, salas, sessões e partidas expiradas.
 
 Por padrão, o servidor escuta em:
@@ -108,6 +113,95 @@ No Windows PowerShell:
 ```powershell
 $env:PORT=3000; npm start
 ```
+
+## Supabase
+
+A integração com Supabase é opcional. Sem as variáveis de ambiente, o jogo continua funcionando como convidado local.
+
+Com Supabase configurado, o projeto habilita:
+
+- login com Google;
+- perfil público;
+- nome de usuário;
+- bio;
+- imagem de perfil;
+- rating inicial de 1000;
+- vitórias, derrotas, partidas e sequência;
+- histórico recente;
+- persistência de partidas finalizadas;
+- registro de ações da partida para replay/auditoria futura.
+
+### Passos manuais
+
+1. Crie um projeto em https://supabase.com.
+
+2. No Supabase, abra **SQL Editor** e rode todo o arquivo:
+
+```text
+supabase/schema.sql
+```
+
+Esse script cria as tabelas `profiles`, `matches`, `match_players`, `match_actions`, ativa RLS de leitura e cria o bucket público `avatars`.
+
+3. Ative login com Google:
+
+- Supabase Dashboard;
+- Authentication;
+- Providers;
+- Google;
+- habilite o provider;
+- preencha Client ID e Client Secret do Google Cloud.
+
+4. Configure as URLs de redirect no Supabase:
+
+Em **Authentication > URL Configuration**, adicione:
+
+```text
+http://localhost:8080
+```
+
+Quando publicar na Vercel, adicione também a URL real do deploy, por exemplo:
+
+```text
+https://seu-projeto.vercel.app
+```
+
+5. Copie as chaves do Supabase:
+
+- Project URL;
+- anon public key;
+- service_role key.
+
+6. Crie um arquivo `.env` na raiz do projeto usando `.env.example` como base:
+
+```env
+PORT=8080
+SESSION_SECRET=troque-por-um-segredo-longo
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_ANON_KEY=sua-anon-key
+SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
+SUPABASE_AVATAR_BUCKET=avatars
+```
+
+7. Reinicie o servidor:
+
+```bash
+npm start
+```
+
+8. Abra o site e clique no chip de perfil no topo. O modal deve mostrar o botão **Entrar com Google**.
+
+### Segurança das chaves
+
+`SUPABASE_ANON_KEY` pode ir para o browser. `SUPABASE_SERVICE_ROLE_KEY` nunca pode ir para o cliente.
+
+O servidor usa a service role apenas no backend para:
+
+- criar/atualizar perfis;
+- salvar partidas finalizadas;
+- atualizar rating e estatísticas.
+
+O arquivo `.env` é ignorado pelo Git e o servidor estático bloqueia acesso a dotfiles e arquivos sensíveis.
 
 ## Jogo autoritativo
 
@@ -168,10 +262,9 @@ Executa o smoke test.
 ## Limitações conhecidas
 
 - estado mantido apenas em memória;
-- sem banco de dados;
-- sem login persistente;
-- sem rating real;
-- sem histórico público de partidas;
+- lobby, fila e presença ainda ficam em memória;
+- rating ainda usa regra simples de protótipo;
+- login/perfil dependem de Supabase configurado;
 - sem reconexão robusta;
 - sem testes end-to-end;
 - sem deploy configurado;
@@ -184,6 +277,7 @@ Executa o smoke test.
 - Texto exibido para o usuário fica em português.
 - O backend deve continuar autoritativo para partidas online.
 - Dependências devem ser adicionadas com cuidado e só quando removerem complexidade real.
+- O cliente nunca grava resultado/rating diretamente no Supabase; o backend autoritativo persiste o resultado.
 
 ## Roadmap curto
 
@@ -191,7 +285,8 @@ Executa o smoke test.
 - padronizar enums internos em inglês;
 - centralizar mensagens da UI;
 - melhorar reconexão de partida;
-- criar persistência mínima;
+- substituir rating simples por Elo/Glicko;
+- mover lobby/fila/presença para Redis ou serviço equivalente;
 - preparar deploy experimental.
 
 ## Licença

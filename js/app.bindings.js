@@ -102,6 +102,10 @@
     app.$("#hero-challenge-friend")?.addEventListener("click", () => app.openFeatureModal("friend"));
     app.$("#hero-play-bot")?.addEventListener("click", () => app.openFeatureModal("bot"));
     app.$("#hero-tutorial")?.addEventListener("click", () => app.openTutorial());
+    app.$("#menu-profile-chip")?.addEventListener("click", () => app.openProfileDialog());
+    document.querySelectorAll(".rail-link-btn").forEach((button) => {
+      button.addEventListener("click", () => app.openProfileDialog());
+    });
 
     app.$("#btn-play").addEventListener("click", () => app.startMatchmaking());
     app.$("#menu-search-cancel")?.addEventListener("click", () => app.cancelMatchmaking());

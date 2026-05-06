@@ -381,6 +381,190 @@ const UI = (() => {
     setTimeout(() => { if (b.parentNode) b.remove(); }, 3500);
   }
 
+  function removeRevealOverlays() {
+    document.querySelectorAll(".reveal-sequence, .match-result-card").forEach((el) => el.remove());
+  }
+
+  function isCountingDie(face, bid, wildAces) {
+    if (!bid) return false;
+    return face === bid.v || (wildAces && bid.v !== 1 && face === 1);
+  }
+
+  function revealVerdictText(event, kind, match) {
+    const bid = event?.bid;
+    const nameForSeat = (seat) => seat === 0 ? "Você" : (match.players[seat]?.name || "Jogador");
+    if (kind === "dudo") {
+      const loser = nameForSeat(event.loserSeat);
+      return event.claimTrue
+        ? {
+            title: "Dudo não segurou",
+            body: `${loser} perde 1 dado.`,
+            tone: "bad",
+          }
+        : {
+            title: "Dudo segurou",
+            body: `${loser} perde 1 dado.`,
+            tone: "ok",
+          };
+    }
+    if (kind === "calza") {
+      const caller = nameForSeat(event.callerSeat);
+      return event.exact
+        ? {
+            title: "Calza acertou",
+            body: `${caller} ganha 1 dado.`,
+            tone: "ok",
+          }
+        : {
+            title: "Calza errou",
+            body: `${caller} perde 1 dado.`,
+            tone: "bad",
+          };
+    }
+    const timedOut = nameForSeat(event.timedOutSeat);
+    return {
+      title: "Tempo esgotado",
+      body: `${timedOut} perde 1 dado.`,
+      tone: "bad",
+    };
+  }
+
+  function buildRevealCard(hand, bid, wildAces) {
+    const card = document.createElement("div");
+    card.className = "reveal-player-card";
+    card.dataset.seat = String(hand.seat);
+    const label = hand.seat === 0 ? "Você" : hand.name;
+    card.innerHTML = `
+      <div class="reveal-player-head">
+        <strong>${esc(label)}</strong>
+        <span>0</span>
+      </div>
+      <div class="reveal-dice-row">
+        ${(hand.dice || []).map((face, index) => {
+          const counts = isCountingDie(face, bid, wildAces);
+          return `<span class="reveal-die-shell" data-counts="${counts ? "1" : "0"}" data-index="${index}">
+            ${pipDie(face || 1, { wild: face === 1 && wildAces })}
+          </span>`;
+        }).join("")}
+      </div>`;
+    return card;
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function countdownUntil(deadlineMs, onTick) {
+    return new Promise((resolve) => {
+      function tick() {
+        const remainingMs = deadlineMs - Date.now();
+        const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
+        onTick(seconds);
+        if (remainingMs <= 0) {
+          resolve();
+          return;
+        }
+        setTimeout(tick, Math.min(250, Math.max(16, remainingMs)));
+      }
+      tick();
+    });
+  }
+
+  async function playRevealSequence(match, event, kind) {
+    if (mode3d) setMode3d(false);
+    const table = $("#table-2d");
+    if (!table || !event) return;
+    removeRevealOverlays();
+
+    const hands = Array.isArray(event.hands) && event.hands.length
+      ? event.hands.slice().sort((a, b) => a.seat - b.seat)
+      : match.players.map((p) => ({ seat: p.seat, name: p.name, dice: p.dice.slice(), alive: p.alive }));
+    const bid = event.bid || null;
+    const verdict = revealVerdictText(event, kind, match);
+
+    const overlay = document.createElement("div");
+    overlay.className = "reveal-sequence";
+    overlay.innerHTML = `
+      <div class="reveal-sequence-panel">
+        <div class="reveal-sequence-head">
+          <span>${kind === "dudo" ? "Dudo" : kind === "calza" ? "Calza" : "Tempo"}</span>
+          <strong>${bid ? renderBidMarkup(bid, { wildAces: match.config.wildAces, mini: true }) : "Sem lance"}</strong>
+        </div>
+        <div class="reveal-count-box">
+          <span>Contagem real</span>
+          <strong>
+            <span class="reveal-count-bid"><b data-reveal-count>0</b>${bid ? ` × ${pipDie(bid.v, { wild: bid.v === 1 && match.config.wildAces, mini: true })}` : ""}</span>
+          </strong>
+        </div>
+        <div class="reveal-player-grid"></div>
+        <div class="reveal-verdict ${verdict.tone}">
+          <strong>${esc(verdict.title)}</strong>
+          <p>${esc(verdict.body)}</p>
+          ${match.phase === "ended" ? "" : `<small>Próximo round em <b data-reveal-next>10</b>s</small>`}
+        </div>
+      </div>`;
+    table.appendChild(overlay);
+
+    const grid = overlay.querySelector(".reveal-player-grid");
+    for (const hand of hands) {
+      grid.appendChild(buildRevealCard(hand, bid, match.config.wildAces));
+    }
+
+    await sleep(180);
+    overlay.classList.add("active");
+
+    const countEl = overlay.querySelector("[data-reveal-count]");
+    let count = 0;
+    const dice = [...overlay.querySelectorAll(".reveal-die-shell")];
+    for (const die of dice) {
+      die.classList.add("visible");
+      if (die.dataset.counts === "1") {
+        count += 1;
+        die.classList.add("counts");
+        const playerCard = die.closest(".reveal-player-card");
+        const playerCount = playerCard?.querySelector(".reveal-player-head span");
+        if (playerCount) playerCount.textContent = String(Number(playerCount.textContent || 0) + 1);
+        if (countEl) countEl.textContent = String(count);
+      }
+      await sleep(die.dataset.counts === "1" ? 210 : 130);
+    }
+
+    overlay.querySelector(".reveal-verdict")?.classList.add("visible");
+    const nextEl = overlay.querySelector("[data-reveal-next]");
+    if (!nextEl || match.phase === "ended") {
+      await sleep(1200);
+      overlay.remove();
+      return;
+    }
+    await countdownUntil(Date.now() + 10_000, (seconds) => {
+      if (nextEl) nextEl.textContent = String(seconds);
+    });
+    overlay.remove();
+  }
+
+  function showMatchResult(match, options = {}) {
+    if (mode3d) setMode3d(false);
+    const table = $("#table-2d");
+    if (!table || !match) return;
+    document.querySelectorAll(".reveal-sequence, .match-result-card").forEach((el) => el.remove());
+    const winner = Number.isInteger(match.winnerSeat) ? match.players[match.winnerSeat] : null;
+    const localSeat = Number.isInteger(options.localSeat) ? options.localSeat : 0;
+    const won = winner && winner.seat === localSeat;
+    const card = document.createElement("div");
+    card.className = `match-result-card ${won ? "won" : "lost"}`;
+    card.innerHTML = `
+      <div class="match-result-kicker">${won ? "Vitória" : "Derrota"}</div>
+      <strong>${won ? "Você ficou por último na mesa." : `${esc(winner?.name || "Ninguem")} venceu a partida.`}</strong>
+      <p>${won ? "Boa leitura: todos os outros jogadores ficaram sem dados." : "A partida acabou quando restou apenas um jogador com dados."}</p>
+      <div class="match-result-actions">
+        <button type="button" class="btn btn-primary" data-match-menu>Voltar ao menu</button>
+      </div>`;
+    table.appendChild(card);
+    card.querySelector("[data-match-menu]")?.addEventListener("click", () => {
+      window.LDAApp?.showMenu?.();
+    });
+  }
+
   function appendLog(cls, html) {
     const li = document.createElement("li");
     li.className = cls;
@@ -1351,6 +1535,7 @@ const UI = (() => {
   return {
     init, renderAll, refreshControls, appendLog,
     showRevealBanner, shakeDice, setSelectedFace, setCurrentQ, setMode3d,
+    playRevealSequence, showMatchResult, removeRevealOverlays,
     updateLive, formatTime, renderBidMarkup, renderBidText,
     get mode3d() { return mode3d; },
     get currentQ() { return currentQ; },

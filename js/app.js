@@ -5,6 +5,7 @@
   window.addEventListener("DOMContentLoaded", async () => {
     app.bindUi();
     app.setScreen(false);
+    await app.initSupabase();
     await app.bootstrapOnline();
   });
 })();

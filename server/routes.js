@@ -3,12 +3,46 @@ const { json, recordAudit } = require("./http");
 const { readBody, safeText } = require("./utils");
 const { inviteLink, publicBaseUrl } = require("./url-utils");
 const {
+  detachPersistentProfile,
   ensureAuthenticatedClient,
   getSessionFromRequest,
   requireAuthenticatedClient,
 } = require("./session-service");
 const { sendSse } = require("./realtime");
 const lobby = require("./lobby-service");
+const persistence = require("./persistence-service");
+
+async function persistentProfileFromBody(body) {
+  if (!body || !body.supabaseAccessToken) return null;
+  try {
+    const user = await persistence.verifyAccessToken(String(body.supabaseAccessToken));
+    return persistence.ensureProfileFromUser(user, body.username);
+  } catch (error) {
+    console.warn("[auth] Supabase token ignored", error.message);
+    return null;
+  }
+}
+
+async function authenticatedAccountFromBearer(req, res) {
+  const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
+  if (!match) return null;
+
+  try {
+    const user = await persistence.verifyAccessToken(match[1]);
+    const profile = await persistence.ensureProfileFromUser(user);
+    if (!profile) return null;
+    return ensureAuthenticatedClient(req, res, profile.username, profile);
+  } catch (error) {
+    console.warn("[auth] Supabase bearer rejected", error.message);
+    return null;
+  }
+}
+
+async function requireAccountClient(req, res, options = {}) {
+  const bearerAuth = await authenticatedAccountFromBearer(req, res);
+  if (bearerAuth) return bearerAuth;
+  return requireAuthenticatedClient(req, res, options);
+}
 
 function buildSnapshotForRequest(client, session, req) {
   const snapshot = lobby.buildSnapshot(client, session);
@@ -19,6 +53,17 @@ function buildSnapshotForRequest(client, session, req) {
 }
 
 async function handleApi(req, res, pathname) {
+  if (req.method === "GET" && pathname === "/api/config") {
+    json(res, 200, {
+      supabase: persistence.isConfigured() ? {
+        url: process.env.SUPABASE_URL,
+        anonKey: process.env.SUPABASE_ANON_KEY,
+        avatarBucket: process.env.SUPABASE_AVATAR_BUCKET || "avatars",
+      } : null,
+    });
+    return true;
+  }
+
   if (req.method === "GET" && pathname === "/api/health") {
     json(res, 200, { ok: true, stats: lobby.statsPayload() });
     return true;
@@ -26,9 +71,46 @@ async function handleApi(req, res, pathname) {
 
   if (req.method === "POST" && pathname === "/api/bootstrap") {
     const body = await readBody(req);
-    const { client, session } = ensureAuthenticatedClient(req, res, body.username);
+    const persistentProfile = await persistentProfileFromBody(body);
+    const { client, session } = ensureAuthenticatedClient(req, res, body.username, persistentProfile);
+    if (!persistentProfile) detachPersistentProfile(client);
     json(res, 200, buildSnapshotForRequest(client, session, req));
     lobby.cleanupState();
+    return true;
+  }
+
+  if (req.method === "GET" && pathname === "/api/me") {
+    const auth = await requireAccountClient(req, res, { csrf: false });
+    if (!auth) return true;
+    if (!auth.client.supabaseUserId) {
+      json(res, 200, { profile: null, history: [] });
+      return true;
+    }
+    const bundle = await persistence.getProfileBundle(auth.client.supabaseUserId);
+    json(res, 200, bundle || { profile: null, history: [] });
+    return true;
+  }
+
+  if (req.method === "PATCH" && pathname === "/api/me") {
+    const auth = await requireAccountClient(req, res);
+    if (!auth) return true;
+    if (!auth.client.supabaseUserId) {
+      json(res, 401, { error: "login_required" });
+      return true;
+    }
+    const body = await readBody(req);
+    const profile = await persistence.updateProfile(auth.client.supabaseUserId, {
+      username: body.username,
+      displayName: body.displayName,
+      bio: body.bio,
+      avatarUrl: body.avatarUrl,
+    });
+    if (profile) {
+      auth.client.username = profile.username;
+      auth.client.displayName = profile.displayName;
+      auth.client.avatarUrl = profile.avatarUrl;
+    }
+    json(res, 200, { profile });
     return true;
   }
 

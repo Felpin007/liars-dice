@@ -99,11 +99,14 @@ function uniqueUsername(requestedName) {
   return candidate;
 }
 
-function createClient(preferredName) {
+function createClient(preferredName, persistentProfile = null) {
   const id = randomId("c_");
   const client = {
     id,
-    username: uniqueUsername(preferredName),
+    username: uniqueUsername(persistentProfile?.username || preferredName),
+    displayName: persistentProfile?.displayName || "",
+    avatarUrl: persistentProfile?.avatarUrl || "",
+    supabaseUserId: persistentProfile?.id || null,
     lastSeenAt: Date.now(),
     streams: new Set(),
     currentRoomCode: null,
@@ -111,6 +114,25 @@ function createClient(preferredName) {
     notifications: [],
   };
   state.clients.set(id, client);
+  return client;
+}
+
+function attachPersistentProfile(client, persistentProfile = null) {
+  if (!client || !persistentProfile) return client;
+  client.supabaseUserId = persistentProfile.id || client.supabaseUserId || null;
+  client.username = persistentProfile.username || client.username;
+  client.displayName = persistentProfile.displayName || client.displayName || "";
+  client.avatarUrl = persistentProfile.avatarUrl || client.avatarUrl || "";
+  touchClient(client);
+  return client;
+}
+
+function detachPersistentProfile(client) {
+  if (!client) return client;
+  client.supabaseUserId = null;
+  client.displayName = "";
+  client.avatarUrl = "";
+  touchClient(client);
   return client;
 }
 
@@ -169,11 +191,14 @@ function getSessionFromRequest(req, res = null) {
   return { client, session };
 }
 
-function ensureAuthenticatedClient(req, res, preferredName) {
+function ensureAuthenticatedClient(req, res, preferredName, persistentProfile = null) {
   const existing = getSessionFromRequest(req, res);
-  if (existing) return existing;
+  if (existing) {
+    attachPersistentProfile(existing.client, persistentProfile);
+    return existing;
+  }
 
-  const client = createClient(preferredName);
+  const client = createClient(preferredName, persistentProfile);
   const session = createSession(client);
   setSessionCookie(req, res, session);
   recordAudit(req, "session_created", { clientId: client.id });
@@ -202,6 +227,8 @@ function requireAuthenticatedClient(req, res, options = {}) {
 
 module.exports = {
   activeClients,
+  attachPersistentProfile,
+  detachPersistentProfile,
   touchClient,
   deleteSessionsForClient,
   getSessionFromRequest,

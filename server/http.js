@@ -29,10 +29,10 @@ function setSecurityHeaders(req, res) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' https://unpkg.com",
+      "script-src 'self' https://unpkg.com https://cdn.jsdelivr.net",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://api.qrserver.com",
-      "connect-src 'self'",
+      "img-src 'self' data: https://api.qrserver.com https://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co",
       "font-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",

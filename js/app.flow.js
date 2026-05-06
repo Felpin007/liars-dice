@@ -167,6 +167,7 @@
     });
 
     UI.appendLog("ev-round", `<b>Round ${match.round}</b> · compromisso sha256:${commitment.hashHex.slice(0, 12)}…`);
+    UI.removeRevealOverlays?.();
     UI.setCurrentQ(1);
     UI.setSelectedFace(2);
     app.refreshLiveClock();
@@ -320,14 +321,12 @@
         ? `Lance verdadeiro (real = ${event.real}). ${app.esc(match.players[event.challengerSeat].name)} perde 1 dado.`
         : `Lance falso (real = ${event.real}). ${app.esc(match.players[event.bid.seat].name)} perde 1 dado.`;
       UI.appendLog("ev-dudo", `→ ${verdict}`);
-      UI.showRevealBanner(verdict, event.claimTrue ? "bad" : "ok");
     } else if (kind === "calza") {
       UI.appendLog("ev-calza", `<b>${app.esc(match.players[event.callerSeat].name)}</b> ${app.actionTimeHtml(actionTimeLeft)} chamou CALZA em ${bidHtmlText}`);
       const verdict = event.exact
         ? `Calza correto! Real = ${event.real}. ${app.esc(match.players[event.callerSeat].name)} ganha 1 dado.`
         : `Calza errado. Real = ${event.real}. ${app.esc(match.players[event.callerSeat].name)} perde 1 dado.`;
       UI.appendLog("ev-calza", `→ ${verdict}`);
-      UI.showRevealBanner(verdict, event.exact ? "ok" : "bad");
     } else if (kind === "timeout") {
       const playerName = app.esc(match.players[event.timedOutSeat].name);
       UI.appendLog("ev-dudo", `<b>${playerName}</b> ${app.actionTimeHtml(actionTimeLeft)} ficou sem tempo.`);
@@ -335,7 +334,6 @@
         ? `→ ${playerName} perde 1 dado. Lance atual: ${bidHtmlText}.`
         : `→ ${playerName} perde 1 dado antes de qualquer lance.`;
       UI.appendLog("ev-dudo", detail);
-      UI.showRevealBanner(`Tempo esgotado — ${match.players[event.timedOutSeat].name} perde 1 dado.`, "bad");
     }
 
     if (event.eliminatedSeat != null) {
@@ -344,7 +342,8 @@
 
     UI.renderAll();
     UI.updateLive(match);
-    await app.sleep(2400);
+    await UI.playRevealSequence?.(match, event, kind);
+    await app.sleep(650);
     if (!app.getMatch() || !app.isSessionActive(activeSession)) return;
 
     UI.appendLog("ev-round", `seed revelado: ${match.commitment.seedHex.slice(0, 24)}…  (verificável)`);
@@ -354,9 +353,9 @@
       app.refreshLiveClock();
       const winner = match.winnerSeat != null ? match.players[match.winnerSeat].name : "—";
       UI.appendLog("ev-end", `🏆 Fim: vencedor = ${app.esc(winner)}`);
-      UI.showRevealBanner(`Partida encerrada — vencedor: ${winner}`, "ok");
       UI.renderAll();
       UI.updateLive(match);
+      UI.showMatchResult?.(match, { localSeat: 0 });
       return;
     }
 

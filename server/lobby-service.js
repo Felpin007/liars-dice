@@ -16,6 +16,9 @@ const {
   touchClient,
 } = require("./session-service");
 const { broadcast, pushToClient } = require("./realtime");
+const persistence = require("./persistence-service");
+
+const RESOLUTION_REVEAL_MS = 13000;
 
 function statsPayload() {
   const activeMatches = Array.from(state.matches.values()).filter((match) => Date.now() - match.createdAt <= MATCH_TTL_MS);
@@ -31,6 +34,7 @@ function publicRoomSummary(room) {
     title: room.title,
     description: room.description,
     hostName: room.hostName,
+    hostAvatarUrl: room.hostAvatarUrl,
     kind: room.kind,
     gameType: room.config.gameType,
     minutes: room.config.minutes,
@@ -49,6 +53,7 @@ function roomDetails(room, viewerId) {
     members: room.members.map((member) => ({
       clientId: member.clientId,
       username: member.username,
+      avatarUrl: member.avatarUrl || "",
       isHost: member.clientId === room.hostClientId,
     })),
     canJoin: room.status === "waiting" && room.members.length < room.maxPlayers && !room.members.some((member) => member.clientId === viewerId),
@@ -111,6 +116,7 @@ function createRoom(client, kind, config) {
     status: "waiting",
     hostClientId: client.id,
     hostName: client.username,
+    hostAvatarUrl: client.avatarUrl || "",
     maxPlayers: maxPlayersForType(config.gameType),
     title: buildRoomTitle(kind, client.username),
     description: buildRoomDescription(config),
@@ -120,7 +126,13 @@ function createRoom(client, kind, config) {
       increment: Math.max(0, Math.min(30, Number(config.increment) || 0)),
       matchType: config.matchType === "ranqueada" ? "ranqueada" : "amistosa",
     },
-    members: [{ clientId: client.id, username: client.username, joinedAt: Date.now() }],
+    members: [{
+      clientId: client.id,
+      username: client.username,
+      supabaseUserId: client.supabaseUserId || null,
+      avatarUrl: client.avatarUrl || "",
+      joinedAt: Date.now(),
+    }],
   };
   state.rooms.set(code, room);
   client.currentRoomCode = code;
@@ -157,7 +169,13 @@ function joinRoom(client, code) {
     leaveRoom(client, client.currentRoomCode);
   }
 
-  room.members.push({ clientId: client.id, username: client.username, joinedAt: Date.now() });
+  room.members.push({
+    clientId: client.id,
+    username: client.username,
+    supabaseUserId: client.supabaseUserId || null,
+    avatarUrl: client.avatarUrl || "",
+    joinedAt: Date.now(),
+  });
   room.updatedAt = Date.now();
   client.currentRoomCode = code;
   emitHomeUpdate();
@@ -178,6 +196,7 @@ function leaveRoom(client, code) {
     if (room.hostClientId === client.id) {
       room.hostClientId = room.members[0].clientId;
       room.hostName = room.members[0].username;
+      room.hostAvatarUrl = room.members[0].avatarUrl || "";
       room.title = buildRoomTitle(room.kind, room.hostName);
     }
     pushRoomUpdate(room);
@@ -303,7 +322,13 @@ function pushMatchSnapshot(match, eventName = "match.snapshot") {
 
 function scheduleAuthoritativeMatch(match) {
   clearMatchTimer(match.id);
-  if (match.phase === "ended") return;
+  if (match.phase === "ended") {
+    persistence.persistFinishedMatch(match).catch((error) => {
+      console.warn("[persistence] match save failed", error.message);
+      match.persistedAt = null;
+    });
+    return;
+  }
 
   if (match.phase === "resolving") {
     const timer = setTimeout(() => {
@@ -311,7 +336,7 @@ function scheduleAuthoritativeMatch(match) {
       GameServer.startRound(match);
       pushMatchSnapshot(match);
       scheduleAuthoritativeMatch(match);
-    }, 2400);
+    }, RESOLUTION_REVEAL_MS);
     state.matchTimers.set(match.id, timer);
     return;
   }
@@ -371,6 +396,7 @@ function startRoomMatch(client, code) {
 
   const humanPlayers = room.members.map((member, seat) => ({
     clientId: member.clientId,
+    supabaseUserId: member.supabaseUserId || state.clients.get(member.clientId)?.supabaseUserId || null,
     username: member.username,
     seat,
   }));
@@ -422,7 +448,12 @@ function dispatchQueuedMatch(entries) {
     if (client) client.queueEntryId = null;
   }
 
-  const humanPlayers = entries.map((entry, i) => ({ clientId: entry.clientId, username: entry.username, seat: i }));
+  const humanPlayers = entries.map((entry, i) => ({
+    clientId: entry.clientId,
+    supabaseUserId: state.clients.get(entry.clientId)?.supabaseUserId || null,
+    username: entry.username,
+    seat: i,
+  }));
   const playerNames = humanPlayers.map((player) => player.username);
   const botSeats = [];
   while (entries.length === 1 && playerNames.length < QUICKMATCH_TARGET_PLAYERS) {
@@ -462,6 +493,9 @@ function buildSnapshot(client, session = null) {
     profile: {
       clientId: client.id,
       username: client.username,
+      displayName: client.displayName || "",
+      avatarUrl: client.avatarUrl || "",
+      supabaseUserId: client.supabaseUserId || null,
     },
     security: session ? {
       csrfToken: session.csrfToken,

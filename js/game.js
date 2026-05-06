@@ -120,6 +120,7 @@ const Game = (() => {
     const real = countInPool(state, bid.v);
     const claimTrue = real >= bid.q;
     const loserSeat = claimTrue ? challengerSeat : bid.seat;
+    const revealedHands = snapshotHands(state);
     const loser = state.players[loserSeat];
     loser.dice.pop();
     if (loser.dice.length === 0) loser.alive = false;
@@ -131,7 +132,7 @@ const Game = (() => {
       claimTrue,
       loserSeat,
       eliminatedSeat: loser.alive ? null : loserSeat,
-      hands: snapshotHands(state),
+      hands: revealedHands,
     };
     finalizeRound(state, loserSeat);
     return { ok: true, event: outcome };
@@ -145,6 +146,7 @@ const Game = (() => {
     const real = countInPool(state, bid.v);
     const exact = real === bid.q;
     const caller = state.players[callerSeat];
+    const revealedHands = snapshotHands(state);
     let eliminated = null;
     if (exact) {
       // §2.4 — acerto: ganha 1 dado (até limite)
@@ -157,7 +159,7 @@ const Game = (() => {
       type: "calza_resolved",
       callerSeat, bid: { ...bid }, real, exact,
       eliminatedSeat: eliminated,
-      hands: snapshotHands(state),
+      hands: revealedHands,
     };
     // quem chamou calza inicia o próximo round (se ainda vivo), senão próximo
     finalizeRound(state, callerSeat);
@@ -171,6 +173,7 @@ const Game = (() => {
     const player = state.players[timedOutSeat];
     if (!player || !player.alive) return { ok: false, error: "player-dead" };
 
+    const revealedHands = snapshotHands(state);
     if (player.dice.length > 0) player.dice.pop();
     if (player.dice.length === 0) player.alive = false;
 
@@ -180,7 +183,7 @@ const Game = (() => {
       loserSeat: timedOutSeat,
       bid: state.currentBid ? { ...state.currentBid } : null,
       eliminatedSeat: player.alive ? null : timedOutSeat,
-      hands: snapshotHands(state),
+      hands: revealedHands,
     };
     finalizeRound(state, timedOutSeat);
     return { ok: true, event: outcome };
