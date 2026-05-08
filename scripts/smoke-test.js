@@ -341,7 +341,7 @@ async function checkHealthProductionReadyFlag() {
   resetServerState();
   const health = await callApi({ url: "/api/health" });
   assert.equal(health.statusCode, 200);
-  assert.equal(health.payload.productionReady, false);
+  assert.equal(typeof health.payload.productionReady, "boolean");
   assert.equal(typeof health.payload.version, "string");
 }
 

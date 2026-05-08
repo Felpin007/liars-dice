@@ -114,7 +114,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (req.method === "GET" && pathname === "/api/snapshot") {
-    const auth = requireAuthenticatedClient(req, res, { csrf: false });
+    const auth = await requireAccountClient(req, res, { csrf: false });
     if (!auth) return true;
     json(res, 200, buildSnapshotForRequest(auth.client, auth.session, req));
     return true;
@@ -281,7 +281,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (req.method === "POST" && pathname === "/api/heartbeat") {
-    const auth = requireAuthenticatedClient(req, res);
+    const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     json(res, 200, { ok: true, stats: lobby.statsPayload() });
     return true;
@@ -289,12 +289,12 @@ async function handleApi(req, res, pathname) {
 
   if (req.method === "GET" && pathname === "/api/events") {
     if (runtime.isEnabled()) {
-      const auth = requireAuthenticatedClient(req, res, { csrf: false });
+      const auth = await requireAccountClient(req, res, { csrf: false });
       if (!auth) return true;
       json(res, 200, buildSnapshotForRequest(auth.client, auth.session, req));
       return true;
     }
-    const auth = requireAuthenticatedClient(req, res, { csrf: false });
+    const auth = await requireAccountClient(req, res, { csrf: false });
     if (!auth) return true;
     const { client, session } = auth;
     res.writeHead(200, {
@@ -318,7 +318,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (req.method === "POST" && pathname === "/api/rooms") {
-    const auth = requireAuthenticatedClient(req, res);
+    const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     const body = await readBody(req);
     const { client } = auth;
@@ -339,7 +339,7 @@ async function handleApi(req, res, pathname) {
 
   const roomJoinMatch = pathname.match(/^\/api\/rooms\/([^/]+)\/join$/);
   if (req.method === "POST" && roomJoinMatch) {
-    const auth = requireAuthenticatedClient(req, res);
+    const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     const { client } = auth;
     const result = lobby.joinRoom(client, roomJoinMatch[1]);
@@ -358,7 +358,7 @@ async function handleApi(req, res, pathname) {
 
   const roomLeaveMatch = pathname.match(/^\/api\/rooms\/([^/]+)\/leave$/);
   if (req.method === "POST" && roomLeaveMatch) {
-    const auth = requireAuthenticatedClient(req, res);
+    const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     const { client } = auth;
     lobby.leaveRoom(client, roomLeaveMatch[1]);
@@ -368,7 +368,7 @@ async function handleApi(req, res, pathname) {
 
   const roomStartMatch = pathname.match(/^\/api\/rooms\/([^/]+)\/start$/);
   if (req.method === "POST" && roomStartMatch) {
-    const auth = requireAuthenticatedClient(req, res);
+    const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     const { client } = auth;
     const result = lobby.startRoomMatch(client, roomStartMatch[1]);
@@ -404,7 +404,7 @@ async function handleApi(req, res, pathname) {
 
   const roomInviteMatch = pathname.match(/^\/api\/rooms\/([^/]+)\/invite$/);
   if (req.method === "POST" && roomInviteMatch) {
-    const auth = requireAuthenticatedClient(req, res);
+    const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     const body = await readBody(req);
     const { client } = auth;
@@ -424,7 +424,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (req.method === "POST" && pathname === "/api/queue/join") {
-    const auth = requireAuthenticatedClient(req, res);
+    const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     const body = await readBody(req);
     const { client } = auth;
@@ -443,7 +443,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (req.method === "POST" && pathname === "/api/queue/leave") {
-    const auth = requireAuthenticatedClient(req, res);
+    const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     lobby.removeQueueEntry(auth.client.id);
     json(res, 200, { ok: true, stats: lobby.statsPayload() });
@@ -453,7 +453,7 @@ async function handleApi(req, res, pathname) {
   const matchActionMatch = pathname.match(/^\/api\/match\/([^/]+)\/action$/);
   const matchInfoMatch = pathname.match(/^\/api\/match\/([^/]+)$/);
   if (req.method === "GET" && matchInfoMatch) {
-    const auth = requireAuthenticatedClient(req, res, { csrf: false });
+    const auth = await requireAccountClient(req, res, { csrf: false });
     if (!auth) return true;
     const { client } = auth;
     const match = lobby.getMatch(matchInfoMatch[1]);
@@ -471,7 +471,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (req.method === "POST" && matchActionMatch) {
-    const auth = requireAuthenticatedClient(req, res);
+    const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     const body = await readBody(req);
     const { client } = auth;
@@ -502,7 +502,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (req.method === "POST" && pathname === "/api/reports") {
-    const auth = requireAuthenticatedClient(req, res);
+    const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     const body = await readBody(req);
     const reason = safeText(body.reason, "").slice(0, 80);
