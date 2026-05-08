@@ -215,7 +215,7 @@
     }, 15_000);
   }
 
-  async function bootstrapOnline() {
+  async function bootstrapOnline(options = {}) {
     const preferredName = app.onlineCommon.storedUsername() || app.onlineCommon.defaultUsername();
     try {
       const supabaseAccessToken = await app.supabaseAuth?.accessToken?.();
@@ -229,11 +229,13 @@
       app.state.online.ready = true;
       app.state.online.backendAvailable = true;
       app.onlineCommon.applySnapshot(snapshot);
+      if (options.reconnectOnly) return snapshot;
       localStorage.removeItem("lda.clientId");
       connectEvents();
       startPolling();
       startHeartbeat();
       app.onlineRooms.handleInviteRoute();
+      return snapshot;
     } catch (error) {
       console.warn("Backend offline:", error);
       app.state.online.lastError = error.message || String(error);

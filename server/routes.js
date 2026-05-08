@@ -108,7 +108,11 @@ async function handleApi(req, res, pathname) {
     const persistentProfile = await persistentProfileFromBody(body);
     const { client, session } = ensureAuthenticatedClient(req, res, body.username, persistentProfile);
     if (!persistentProfile) detachPersistentProfile(client);
-    json(res, 200, buildSnapshotForRequest(client, session, req));
+    const snapshot = buildSnapshotForRequest(client, session, req);
+    if (runtime.isEnabled()) {
+      await runtime.persistState();
+    }
+    json(res, 200, snapshot);
     lobby.cleanupState();
     return true;
   }

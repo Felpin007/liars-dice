@@ -33,6 +33,10 @@
     const response = await fetch(path, init);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (payload.error === "auth_required" && !options.__retriedAuth && path !== "/api/bootstrap") {
+        await app.bootstrapOnline?.({ reconnectOnly: true });
+        return api(path, { ...options, __retriedAuth: true });
+      }
       throw new Error(payload.error || payload.message || `Falha em ${path}`);
     }
     return payload;
