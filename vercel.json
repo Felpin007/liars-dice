@@ -5,7 +5,7 @@
     "api/index.js": {
       "maxDuration": 300
     },
-    "api/[...path].js": {
+    "api/[...].js": {
       "maxDuration": 300
     }
   },
