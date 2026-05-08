@@ -314,6 +314,7 @@ Em Vercel, o backend roda como Function Node e usa Supabase como estado comparti
 - SSE continua disponível no servidor local, mas não é o caminho principal em produção Vercel.
 
 Bots, timeout e passagem de round sao resolvidos de forma lazy quando uma action, polling ou cron toca a partida.
+No plano Hobby da Vercel, o cron fica diario (`0 3 * * *`) porque intervalos menores que uma vez por dia falham no deploy. O cleanup lazy continua rodando quando usuarios chamam APIs.
 
 ## Limitações conhecidas
 
