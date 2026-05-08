@@ -240,7 +240,10 @@
         return;
       }
       if (!app.state.online.backendAvailable) {
-        app.openDialog("Backend offline", "<p>Inicie o servidor com <code>npm start</code> ou <code>node server/server.js</code> para criar salas reais, convites e matchmaking.</p>");
+        const message = app.state.online.lastError === "supabase_schema_missing"
+          ? "O Supabase esta com tabelas faltando. Rode o arquivo <code>supabase/schema.sql</code> completo no SQL Editor e confira <code>/api/health</code>."
+          : "Inicie o servidor com <code>npm start</code> ou <code>node server/server.js</code> para criar salas reais, convites e matchmaking.";
+        app.openDialog("Backend indisponivel", `<p>${message}</p>`);
         return;
       }
       try {

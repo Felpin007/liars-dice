@@ -43,7 +43,12 @@ function publicCodeForSupabaseError(error) {
   if (message.includes("duplicate key") || message.includes("profiles_username")) return "username_taken";
   if (message.includes("bucket not found")) return "avatar_bucket_missing";
   if (message.includes("permission denied") || message.includes("violates row-level security")) return "supabase_permission_denied";
-  if (message.includes("relation") && message.includes("does not exist")) return "supabase_schema_missing";
+  if (
+    (message.includes("relation") && message.includes("does not exist"))
+    || message.includes("could not find the table")
+    || message.includes("schema cache")
+    || message.includes("pgrst205")
+  ) return "supabase_schema_missing";
   return null;
 }
 

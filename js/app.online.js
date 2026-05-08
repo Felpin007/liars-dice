@@ -236,9 +236,10 @@
       app.onlineRooms.handleInviteRoute();
     } catch (error) {
       console.warn("Backend offline:", error);
+      app.state.online.lastError = error.message || String(error);
       app.state.online.backendAvailable = false;
       const rankEl = app.$("#menu-profile-rank");
-      if (rankEl) rankEl.textContent = "Modo local · Offline";
+      if (rankEl) rankEl.textContent = error.message === "supabase_schema_missing" ? "Supabase incompleto" : "Modo local · Offline";
     }
   }
 

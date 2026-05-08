@@ -252,6 +252,7 @@ window.LDAApp = (() => {
       profile_text_blocked: "Texto bloqueado pela moderação.",
       profile_text_link_blocked: "Perfil não pode conter links externos.",
       invalid_report: "Revise o report: alvo, motivo e detalhes precisam ser válidos.",
+      supabase_schema_missing: "O Supabase esta com tabelas faltando. Rode o schema.sql completo.",
     }[code] || (`Erro: ${code}`);
   }
 
