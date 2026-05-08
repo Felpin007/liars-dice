@@ -187,10 +187,10 @@
     });
 
     source.onerror = () => {
-      app.state.online.backendAvailable = false;
       if (app.state.online.eventSource === source) {
         source.close();
         startPolling();
+        pollSnapshotNow();
         scheduleReconnect();
       }
     };
