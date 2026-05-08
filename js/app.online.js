@@ -2,9 +2,87 @@
 (() => {
   const app = window.LDAApp;
 
+  function setConnectionStatus(text) {
+    if (!text) return;
+    if (app.state.online.authoritative && app.state.online.activeMatchId) {
+      UI.showRevealBanner(text, "bad");
+      return;
+    }
+    if (!app.state.account.profile) {
+      const rankEl = app.$("#menu-profile-rank");
+      if (rankEl) rankEl.textContent = text;
+    }
+  }
+
+  function clearReconnectTimer() {
+    if (app.state.online.reconnectTimer) {
+      clearTimeout(app.state.online.reconnectTimer);
+      app.state.online.reconnectTimer = null;
+    }
+  }
+
+  function stopPolling() {
+    if (app.state.online.snapshotPollId) clearInterval(app.state.online.snapshotPollId);
+    if (app.state.online.matchPollId) clearInterval(app.state.online.matchPollId);
+    app.state.online.snapshotPollId = null;
+    app.state.online.matchPollId = null;
+    app.state.online.pollingSnapshot = false;
+    app.state.online.pollingMatch = false;
+  }
+
+  async function pollSnapshotNow() {
+    if (!app.state.online.ready || app.state.online.pollingSnapshot) return;
+    app.state.online.pollingSnapshot = true;
+    try {
+      const snapshot = await app.api("/api/snapshot", { method: "GET" });
+      app.state.online.backendAvailable = true;
+      app.onlineCommon.applySnapshot(snapshot);
+    } catch (error) {
+      app.state.online.backendAvailable = false;
+      console.warn("Snapshot indisponivel:", error.message);
+    } finally {
+      app.state.online.pollingSnapshot = false;
+    }
+  }
+
+  async function pollActiveMatchNow() {
+    const matchId = app.state.online.activeMatchId;
+    if (!app.state.online.ready || !matchId || app.state.online.pollingMatch) return;
+    app.state.online.pollingMatch = true;
+    try {
+      const payload = await app.api(`/api/match/${encodeURIComponent(matchId)}`, { method: "GET" });
+      app.state.online.backendAvailable = true;
+      if (payload.snapshot) app.applyServerMatchSnapshot(payload.snapshot);
+    } catch (error) {
+      app.state.online.backendAvailable = false;
+      console.warn("Partida indisponivel:", error.message);
+    } finally {
+      app.state.online.pollingMatch = false;
+    }
+  }
+
+  function startPolling() {
+    if (app.state.online.snapshotPollId) return;
+    app.state.online.snapshotPollId = setInterval(pollSnapshotNow, 2000);
+    app.state.online.matchPollId = setInterval(pollActiveMatchNow, 1000);
+  }
+
+  function scheduleReconnect() {
+    if (!app.state.online.ready || app.state.online.reconnectTimer) return;
+    app.state.online.reconnecting = true;
+    app.state.online.reconnectAttempts += 1;
+    const delay = Math.min(20_000, 1000 * Math.pow(1.7, app.state.online.reconnectAttempts - 1));
+    setConnectionStatus("Reconectando...");
+    app.state.online.reconnectTimer = window.setTimeout(() => {
+      app.state.online.reconnectTimer = null;
+      connectEvents();
+    }, delay);
+  }
+
   function connectEvents() {
     if (!app.state.online.ready) return;
 
+    clearReconnectTimer();
     if (app.state.online.eventSource) {
       app.state.online.eventSource.close();
     }
@@ -12,8 +90,16 @@
     const source = new EventSource("/api/events");
     app.state.online.eventSource = source;
 
+    source.onopen = () => {
+      app.state.online.backendAvailable = true;
+      app.state.online.reconnecting = false;
+      app.state.online.reconnectAttempts = 0;
+    };
+
     source.addEventListener("bootstrap", (event) => {
       app.state.online.backendAvailable = true;
+      app.state.online.reconnecting = false;
+      app.state.online.reconnectAttempts = 0;
       app.onlineCommon.applySnapshot(JSON.parse(event.data));
     });
 
@@ -102,6 +188,11 @@
 
     source.onerror = () => {
       app.state.online.backendAvailable = false;
+      if (app.state.online.eventSource === source) {
+        source.close();
+        startPolling();
+        scheduleReconnect();
+      }
     };
   }
 
@@ -140,6 +231,7 @@
       app.onlineCommon.applySnapshot(snapshot);
       localStorage.removeItem("lda.clientId");
       connectEvents();
+      startPolling();
       startHeartbeat();
       app.onlineRooms.handleInviteRoute();
     } catch (error) {
@@ -152,5 +244,9 @@
 
   Object.assign(app, {
     bootstrapOnline,
+    pollSnapshotNow,
+    pollActiveMatchNow,
+    startOnlinePolling: startPolling,
+    stopOnlinePolling: stopPolling,
   });
 })();

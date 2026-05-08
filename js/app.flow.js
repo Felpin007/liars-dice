@@ -110,6 +110,7 @@
       minutes: clockConfig.minutes,
       incrementSeconds: clockConfig.incrementSeconds,
     };
+    app.initMatchDebug?.(match, "local", app.state.lastStartOptions);
 
     app.$("#log").innerHTML = "";
     UI.appendLog("ev-round", `<b>Partida iniciada</b> · ${names.length} jogadores · ${startingDice} dados · ${wildAces ? "coringas ON" : "coringas OFF"}${calzaEnabled ? " · Calza" : ""} · relógio ${clockConfig.minutes}+${clockConfig.incrementSeconds}`);
@@ -165,6 +166,7 @@
       outcome: null,
       commitmentHash: commitment.hashHex,
     });
+    app.recordDebugRoundStart?.(match);
 
     UI.appendLog("ev-round", `<b>Round ${match.round}</b> · compromisso sha256:${commitment.hashHex.slice(0, 12)}…`);
     UI.removeRevealOverlays?.();
@@ -191,6 +193,7 @@
     }
 
     app.startTurnClock(player.seat);
+    app.recordDebugTurnStart?.(match, player.seat);
     UI.renderAll();
     UI.updateLive(match);
     if (app.getPlayerTimeLeft(player.seat) <= 0) {
@@ -219,7 +222,10 @@
     }
 
     const round = match.rounds[match.rounds.length - 1];
+    const startedRemainingMs = Math.max(0, Math.round(match.clock?.startedRemainingMs ?? match.players[seat]?.timeLeftMs ?? match.turnTimeMs ?? 0));
+    const decisionMsFromLeft = (timeLeftMs) => Math.max(0, Math.round(startedRemainingMs - Math.max(0, timeLeftMs - (match.incrementMs || 0))));
     if (action.type === "bid") {
+      const previousBid = match.currentBid ? { ...match.currentBid } : null;
       const result = Game.placeBid(match, seat, action.bid);
       if (!result.ok) {
         if (seat === 0) UI.showRevealBanner(app.errorMsg(result.error), "bad");
@@ -231,8 +237,12 @@
       if (bidEntry) bidEntry.timeLeftMs = timeLeftMs;
       if (match.currentBid) match.currentBid.timeLeftMs = timeLeftMs;
 
-      round.bids.push({ type: "bid", seat, q: action.bid.q, v: action.bid.v, timeLeftMs });
+      const decisionMs = decisionMsFromLeft(timeLeftMs);
+      if (bidEntry) bidEntry.decisionMs = decisionMs;
+      round.bids.push({ type: "bid", seat, q: action.bid.q, v: action.bid.v, timeLeftMs, decisionMs });
       app.setLastAction({ type: "bid", seat, bid: { q: action.bid.q, v: action.bid.v }, timeLeftMs });
+      app.recordDebugAction?.(match, seat, action, { previousBid, result: result.event, timeLeftMs, startedRemainingMs, decisionMs });
+      app.playSound?.("bid");
       UI.appendLog("ev-bid", app.bidLogHtml(seat, action.bid, timeLeftMs));
       UI.renderAll();
       UI.updateLive(match);
@@ -243,30 +253,38 @@
     }
 
     if (action.type === "dudo") {
+      const previousBid = match.currentBid ? { ...match.currentBid } : null;
+      const timeLeftMs = app.commitActionTime(seat);
       const result = Game.resolveDudo(match, seat);
       if (!result.ok) {
         if (seat === 0) UI.showRevealBanner(app.errorMsg(result.error), "bad");
         return;
       }
 
-      const timeLeftMs = app.commitActionTime(seat);
-      round.bids.push({ type: "dudo", seat, timeLeftMs });
+      const decisionMs = decisionMsFromLeft(timeLeftMs);
+      round.bids.push({ type: "dudo", seat, timeLeftMs, decisionMs });
       app.setLastAction({ type: "dudo", seat, bid: { ...result.event.bid }, timeLeftMs });
+      app.recordDebugAction?.(match, seat, action, { previousBid, result: result.event, timeLeftMs, startedRemainingMs, decisionMs });
+      app.playSound?.("dudo");
       round.outcome = result.event;
       await handleResolution(result.event, "dudo", activeSession, timeLeftMs);
       return true;
     }
 
     if (action.type === "calza") {
+      const previousBid = match.currentBid ? { ...match.currentBid } : null;
+      const timeLeftMs = app.commitActionTime(seat);
       const result = Game.resolveCalza(match, seat);
       if (!result.ok) {
         if (seat === 0) UI.showRevealBanner(app.errorMsg(result.error), "bad");
         return;
       }
 
-      const timeLeftMs = app.commitActionTime(seat);
-      round.bids.push({ type: "calza", seat, timeLeftMs });
+      const decisionMs = decisionMsFromLeft(timeLeftMs);
+      round.bids.push({ type: "calza", seat, timeLeftMs, decisionMs });
       app.setLastAction({ type: "calza", seat, bid: { ...result.event.bid }, timeLeftMs });
+      app.recordDebugAction?.(match, seat, action, { previousBid, result: result.event, timeLeftMs, startedRemainingMs, decisionMs });
+      app.playSound?.("reveal");
       round.outcome = result.event;
       await handleResolution(result.event, "calza", activeSession, timeLeftMs);
       return true;
@@ -286,6 +304,7 @@
 
     match.timeoutResolvingSeat = seat;
     app.state.busy = false;
+    const startedRemainingMs = Math.max(0, Math.round(match.clock?.startedRemainingMs ?? player.timeLeftMs ?? match.turnTimeMs ?? 0));
 
     try {
       app.clearTurnClock();
@@ -298,11 +317,12 @@
 
       const round = match.rounds[match.rounds.length - 1];
       if (round) {
-        round.bids.push({ type: "timeout", seat, timeLeftMs: 0 });
+        round.bids.push({ type: "timeout", seat, timeLeftMs: 0, decisionMs: startedRemainingMs });
         round.outcome = result.event;
       }
 
       app.setLastAction({ type: "timeout", seat, bid: result.event.bid ? { ...result.event.bid } : null, timeLeftMs: 0 });
+      app.recordDebugAction?.(match, seat, { type: "timeout" }, { previousBid: result.event.bid, result: result.event, timeLeftMs: 0, startedRemainingMs, decisionMs: startedRemainingMs });
       await handleResolution(result.event, "timeout", activeSession, 0);
     } finally {
       if (app.getMatch() === match) match.timeoutResolvingSeat = null;
@@ -339,9 +359,11 @@
     if (event.eliminatedSeat != null) {
       UI.appendLog("ev-round", `☠ ${app.esc(match.players[event.eliminatedSeat].name)} foi eliminado.`);
     }
+    app.recordDebugResolution?.(match, event, kind);
 
     UI.renderAll();
     UI.updateLive(match);
+    app.playSound?.("reveal");
     await UI.playRevealSequence?.(match, event, kind);
     await app.sleep(650);
     if (!app.getMatch() || !app.isSessionActive(activeSession)) return;
@@ -356,6 +378,8 @@
       UI.renderAll();
       UI.updateLive(match);
       UI.showMatchResult?.(match, { localSeat: 0 });
+      app.recordDebugMatchEnd?.(match);
+      app.playSound?.(match.winnerSeat === 0 ? "win" : "loss");
       return;
     }
 

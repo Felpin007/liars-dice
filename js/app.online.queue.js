@@ -10,6 +10,7 @@
       modeKey: button?.dataset.modeKey || "quick-5-0",
       minutes: Number(button?.dataset.minutes || 5),
       increment: Number(button?.dataset.increment || 0),
+      matchType: app.$("#quickmatch-ranked")?.checked ? "ranqueada" : "amistosa",
     };
   }
 
@@ -21,8 +22,8 @@
     const titleEl = app.$("#menu-search-title");
     const subtitleEl = app.$("#menu-search-subtitle");
     if (titleEl) titleEl.textContent = `Buscando ${preset.label}`;
-    if (subtitleEl) subtitleEl.textContent = `Fila ${preset.minutes}+${preset.increment} com backend em tempo real.`;
-    app.$("#menu-search-preset").textContent = `${preset.label} · ${preset.minutes}+${preset.increment}`;
+    if (subtitleEl) subtitleEl.textContent = `Fila ${preset.minutes}+${preset.increment} ${preset.matchType === "ranqueada" ? "ranqueada" : "casual"}.`;
+    app.$("#menu-search-preset").textContent = `${preset.label} · ${preset.minutes}+${preset.increment} · ${preset.matchType === "ranqueada" ? "Ranqueada" : "Casual"}`;
     setSearchStatus(statusText);
     refreshSearchElapsed();
     if (searchTicker) clearInterval(searchTicker);
@@ -90,7 +91,7 @@
       showSearchView(payload.queue || preset, "Aguardando jogadores compatíveis…");
     } catch (error) {
       hideSearchView();
-      app.openDialog("Nao foi possivel buscar partida", `<p>${app.esc(error.message)}</p>`);
+      app.openDialog("Nao foi possivel buscar partida", `<p>${app.esc(app.errorMsg(error.message))}</p>`);
     }
   }
 

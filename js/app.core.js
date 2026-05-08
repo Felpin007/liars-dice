@@ -22,12 +22,20 @@ window.LDAApp = (() => {
       currentRoom: null,
       currentQueue: null,
       eventSource: null,
+      reconnectTimer: null,
+      reconnectAttempts: 0,
+      reconnecting: false,
       heartbeatId: null,
+      snapshotPollId: null,
+      matchPollId: null,
+      pollingSnapshot: false,
+      pollingMatch: false,
       searchStartedAt: 0,
       activeMatchId: null,
       activeSession: null,
       authoritative: false,
       lastSnapshotSeq: 0,
+      lastRevealKey: "",
       localToServerSeat: null,
       serverToLocalSeat: null,
     },
@@ -38,6 +46,10 @@ window.LDAApp = (() => {
       user: null,
       profile: null,
       history: [],
+      friends: [],
+      friendRequests: [],
+      notifications: [],
+      unreadNotifications: 0,
       avatarBucket: "avatars",
       refreshAfterMatchId: null,
     },
@@ -73,6 +85,7 @@ window.LDAApp = (() => {
     $("#btn-fair").classList.toggle("hidden", !inGame);
     $("#btn-ldn").classList.toggle("hidden", !inGame);
     $("#wrap-toggle-3d").classList.toggle("hidden", !inGame);
+    window.LDAApp?.updateDebugExportButton?.();
   }
 
   function showMenu() {
@@ -228,6 +241,17 @@ window.LDAApp = (() => {
       "no-bid": "Não há lance para desafiar.",
       "phase": "Fase inválida.",
       "above-pool": "Quantidade maior que o total de dados em jogo.",
+      login_required: "Entre com Google para usar este recurso.",
+      profile_not_found: "Usuário não encontrado.",
+      already_friends: "Vocês já são amigos.",
+      request_pending: "Já existe um pedido pendente.",
+      friend_cooldown: "Pedido recusado recentemente. Tente novamente depois de 24 horas.",
+      friend_self: "Você não pode adicionar a si mesmo.",
+      username_blocked: "Esse usuário não pode ser usado.",
+      username_link_blocked: "Esse usuário não pode conter link.",
+      profile_text_blocked: "Texto bloqueado pela moderação.",
+      profile_text_link_blocked: "Perfil não pode conter links externos.",
+      invalid_report: "Revise o report: alvo, motivo e detalhes precisam ser válidos.",
     }[code] || (`Erro: ${code}`);
   }
 

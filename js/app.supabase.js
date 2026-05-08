@@ -4,7 +4,7 @@
 
   function shortRating(profile) {
     if (!profile) return "Convidado · Casual";
-    return `${profile.rating || 1000} rating · ${profile.gamesPlayed || 0} partidas`;
+    return `${profile.rating || 1500} rating · nível ${profile.level || 1}`;
   }
 
   function profileName(profile) {
@@ -31,6 +31,19 @@
     return `${Math.round((stat(profile, "wins") / played) * 100)}%`;
   }
 
+  function computeLevelProgress(profile) {
+    const xp = Number(profile?.xp || 0);
+    const level = Math.max(1, Number(profile?.level || Math.floor(Math.sqrt(xp / 100)) + 1));
+    const start = Math.pow(level - 1, 2) * 100;
+    const next = Math.pow(level, 2) * 100;
+    return {
+      xp,
+      level,
+      needed: next,
+      percent: next > start ? Math.round(((xp - start) / (next - start)) * 100) : 0,
+    };
+  }
+
   function applyAccountUi(bundle = {}) {
     const profile = bundle.profile || app.state.account.profile;
     app.state.account.profile = profile || null;
@@ -48,17 +61,20 @@
     const levelTitle = app.$("#level-profile-title");
     const levelRating = app.$("#level-rating-label");
     const levelProgress = app.$("#level-progress-copy");
+    const levelFill = document.querySelector(".level-progress-fill");
 
     if (nameEl) nameEl.textContent = name;
     if (rankEl) rankEl.textContent = rank;
     if (avatarEl) avatarEl.innerHTML = avatarMarkup(avatarUrl, name);
     if (quickProfile) quickProfile.textContent = profile ? name : "Convidado · Casual";
-    if (quickRating) quickRating.textContent = profile ? `${profile.rating || 1000} rating` : "Sem rating";
-    if (levelTitle) levelTitle.textContent = profile ? name : "Convidado · Casual";
-    if (levelRating) levelRating.textContent = profile ? `${profile.rating || 1000} rating` : "Sem rating";
+    if (quickRating) quickRating.textContent = profile ? `${profile.rating || 1500} rating` : "Sem rating";
+    const progress = computeLevelProgress(profile);
+    if (levelTitle) levelTitle.textContent = profile ? `Nível ${progress.level} · ${name}` : "Convidado · Casual";
+    if (levelRating) levelRating.textContent = profile ? `${profile.rating || 1500} rating · RD ${Math.round(profile.ratingDeviation || 350)}` : "Sem rating";
+    if (levelFill) levelFill.style.width = profile ? `${progress.percent}%` : "0%";
     if (levelProgress) {
       levelProgress.textContent = profile
-        ? `${profile.wins || 0} vitorias · ${profile.losses || 0} derrotas · melhor sequencia ${profile.bestStreak || 0}`
+        ? `${progress.xp} XP · ${progress.percent}% ate o nivel ${progress.level + 1} · melhor sequencia ${profile.bestStreak || 0}`
         : "Entre com Google para ativar perfil, rating e historico.";
     }
 
@@ -74,6 +90,8 @@
     }
 
     renderActivity();
+    app.renderFriendsRail?.();
+    app.updateNotificationBadge?.();
   }
 
   function renderActivity() {
@@ -157,14 +175,36 @@
 
   async function signOut() {
     if (app.state.account.client) {
-      await app.state.account.client.auth.signOut();
+      try {
+        await app.state.account.client.auth.signOut();
+      } catch {}
     }
     app.state.account.session = null;
     app.state.account.user = null;
     app.state.account.profile = null;
     app.state.account.history = [];
+    app.state.account.friends = [];
+    app.state.account.friendRequests = [];
+    app.state.account.notifications = [];
+    app.state.account.unreadNotifications = 0;
     applyAccountUi();
     await app.bootstrapOnline?.();
+  }
+
+  function friendlyAccountError(error) {
+    const message = String(error?.message || error || "");
+    const lower = message.toLowerCase();
+    if (lower.includes("bucket not found")) return "O bucket de avatars nao existe no Supabase. Rode o schema.sql e tente de novo.";
+    if (lower.includes("duplicate") || lower.includes("already exists")) return "Esse usuario ja esta em uso. Escolha outro nome.";
+    return {
+      username_taken: "Esse usuario ja esta em uso. Escolha outro nome.",
+      avatar_bucket_missing: "O bucket de avatars nao existe no Supabase. Rode o schema.sql e tente de novo.",
+      supabase_schema_missing: "As tabelas do Supabase ainda nao foram criadas. Rode o schema.sql.",
+      supabase_permission_denied: "A chave service_role nao tem permissao para salvar. Confira as variaveis do Supabase.",
+      auth_required: "Sua sessao expirou. Entre novamente.",
+      csrf_required: "A sessao local expirou. Recarregue a pagina e tente novamente.",
+      login_required: "Entre com Google para alterar o perfil.",
+    }[message] || message || "Nao foi possivel concluir a acao.";
   }
 
   async function refreshAccount() {
@@ -174,6 +214,7 @@
     }
     const bundle = await app.api("/api/me");
     applyAccountUi(bundle);
+    await app.refreshSocial?.();
     return bundle;
   }
 
@@ -207,6 +248,41 @@
     });
     await refreshAccount();
     openProfileDialog(payload.profile);
+  }
+
+  async function deleteAccountFromDialog() {
+    const confirmText = app.$("#profile-delete-confirm")?.value || "";
+    const button = app.$("#profile-delete-confirm-btn");
+    if (confirmText !== "EXCLUIR") {
+      throw new Error("Digite EXCLUIR para confirmar.");
+    }
+    if (button) button.disabled = true;
+    await app.api("/api/me", { method: "DELETE" });
+    await signOut();
+    app.openDialog("Conta excluida", "<p>Sua conta e seus dados pessoais foram removidos deste projeto.</p>");
+  }
+
+  function openDeleteAccountDialog() {
+    app.openDialog("Excluir conta", `
+      <div class="profile-delete-warning">
+        <strong>Essa acao e definitiva.</strong>
+        <p>Seu login, perfil, avatar, estatisticas pessoais e vinculos com historico de partidas serao removidos. Dados de outros jogadores em partidas compartilhadas serao preservados.</p>
+        <label>Digite <b>EXCLUIR</b> para confirmar
+          <input id="profile-delete-confirm" autocomplete="off" />
+        </label>
+        <div class="match-config-actions">
+          <button id="profile-delete-confirm-btn" type="button" class="btn btn-danger">Excluir conta</button>
+          <button id="profile-delete-cancel" type="button" class="btn">Cancelar</button>
+        </div>
+      </div>`);
+    app.$("#profile-delete-cancel")?.addEventListener("click", () => openProfileDialog());
+    app.$("#profile-delete-confirm-btn")?.addEventListener("click", async () => {
+      try {
+        await deleteAccountFromDialog();
+      } catch (error) {
+        app.openDialog("Nao foi possivel excluir", `<p>${app.esc(friendlyAccountError(error))}</p>`);
+      }
+    });
   }
 
   function historyHtml() {
@@ -255,7 +331,7 @@
           <div class="profile-avatar large">${avatarMarkup(p.avatarUrl, profileName(p))}</div>
           <div>
             <strong>${app.esc(profileName(p))}</strong>
-            <p>${p.rating || 1000} rating · ${p.gamesPlayed || 0} partidas · ${p.wins || 0} vitorias</p>
+            <p>${p.rating || 1500} rating · nível ${p.level || 1} · ${p.xp || 0} XP</p>
           </div>
         </div>
 
@@ -275,7 +351,8 @@
         </div>
 
         <div class="profile-stats">
-          <span><b>${p.rating || 1000}</b><small>Rating</small></span>
+          <span><b>${p.rating || 1500}</b><small>Rating</small></span>
+          <span><b>${p.level || 1}</b><small>Nível</small></span>
           <span><b>${p.gamesPlayed || 0}</b><small>Partidas</small></span>
           <span><b>${p.wins || 0}</b><small>Vitorias</small></span>
           <span><b>${winRate(p)}</b><small>Win rate</small></span>
@@ -289,6 +366,7 @@
         <div class="match-config-actions">
           <button id="profile-save" type="button" class="btn btn-primary">Salvar perfil</button>
           <button id="profile-logout" type="button" class="btn">Sair</button>
+          <button id="profile-delete" type="button" class="btn btn-danger">Excluir conta</button>
         </div>
       </div>`);
 
@@ -296,10 +374,11 @@
       try {
         await saveProfileFromDialog();
       } catch (error) {
-        app.openDialog("Nao foi possivel salvar", `<p>${app.esc(error.message)}</p>`);
+        app.openDialog("Nao foi possivel salvar", `<p>${app.esc(friendlyAccountError(error))}</p>`);
       }
     });
     app.$("#profile-logout")?.addEventListener("click", signOut);
+    app.$("#profile-delete")?.addEventListener("click", openDeleteAccountDialog);
   }
 
   Object.assign(app, {
@@ -312,6 +391,7 @@
     accessToken,
     signInWithGoogle,
     signOut,
+    deleteAccountFromDialog,
     refreshAccount,
   };
 })();

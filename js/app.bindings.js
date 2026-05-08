@@ -93,7 +93,7 @@
         }
 
         if (button.dataset.mobileNav === "configuracoes") {
-          app.$("#btn-rules")?.click();
+          app.openSettingsDialog?.();
         }
       });
     });
@@ -103,7 +103,9 @@
     app.$("#hero-play-bot")?.addEventListener("click", () => app.openFeatureModal("bot"));
     app.$("#hero-tutorial")?.addEventListener("click", () => app.openTutorial());
     app.$("#menu-profile-chip")?.addEventListener("click", () => app.openProfileDialog());
-    document.querySelectorAll(".rail-link-btn").forEach((button) => {
+    app.$(".menu-bell-btn")?.addEventListener("click", () => app.openNotificationsDialog?.());
+    app.$("#friends-open")?.addEventListener("click", () => app.openFriendsDialog?.());
+    document.querySelectorAll(".rail-link-btn:not(#friends-open)").forEach((button) => {
       button.addEventListener("click", () => app.openProfileDialog());
     });
 
@@ -153,6 +155,7 @@
       const text = LDN.render(match, []);
       app.openDialog("Exportar LDN", `<p>Liar's Dice Notation — formato texto para replays e análise.</p><pre>${app.esc(text)}</pre>`);
     });
+    app.$("#btn-debug-export")?.addEventListener("click", () => app.openDebugExportDialog?.());
 
     app.$("#verify-link").addEventListener("click", (event) => {
       event.preventDefault();

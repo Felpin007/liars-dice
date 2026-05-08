@@ -6,5 +6,8 @@ module.exports = {
   matchTimers: new Map(),
   rateLimits: new Map(),
   sessions: new Map(),
+  friendRequests: new Map(),
+  friendships: new Map(),
+  notifications: new Map(),
   auditLog: [],
 };

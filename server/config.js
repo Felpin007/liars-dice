@@ -25,6 +25,10 @@ function loadDotEnv() {
 loadDotEnv();
 
 const PORT = Number(process.env.PORT || 8080);
+const IS_VERCEL = process.env.VERCEL === "1";
+const NODE_ENV = process.env.NODE_ENV || "development";
+const PUBLIC_BASE_URL = String(process.env.PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+const CRON_SECRET = process.env.CRON_SECRET || "";
 const CLIENT_TTL_MS = 75_000;
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 const MATCH_TTL_MS = 60 * 60 * 1000;
@@ -59,6 +63,10 @@ const BOT_NAMES = ["Alice", "Bob", "Carla", "Diego", "Eva", "Fátima", "Gael", "
 module.exports = {
   ROOT_DIR,
   PORT,
+  IS_VERCEL,
+  NODE_ENV,
+  PUBLIC_BASE_URL,
+  CRON_SECRET,
   CLIENT_TTL_MS,
   ROOM_TTL_MS,
   MATCH_TTL_MS,

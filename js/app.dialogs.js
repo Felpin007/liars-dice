@@ -23,6 +23,17 @@
     { minutes: 30, increment: 20 },
   ];
 
+  const BOT_LEVEL_DESCRIPTIONS = {
+    1: "aleatório válido, com muitos erros",
+    2: "heurística fraca com erro intencional",
+    3: "probabilidade básica e pouco blefe",
+    4: "probabilidade segura e menos chamadas ruins",
+    5: "blefe oportunista e Calza simples",
+    6: "blefe controlado, Calza melhor e menos erro tático",
+    7: "adapta decisões ao histórico recente de lances",
+    8: "maior profundidade, thresholds finos e menor erro tático",
+  };
+
   function openDialog(title, html) {
     app.$("#dlg-title").textContent = title;
     app.$("#dlg-content").innerHTML = html;
@@ -158,11 +169,14 @@
   function renderBotLevelPicker(activeLevel) {
     const levelButtons = Array.from({ length: 8 }, (_, index) => {
       const level = index + 1;
+      const description = BOT_LEVEL_DESCRIPTIONS[level] || "";
       return `
         <button
           type="button"
           class="match-level-btn${level === activeLevel ? " active" : ""}"
           data-level="${level}"
+          title="${app.esc(description)}"
+          aria-label="Nível ${level}: ${app.esc(description)}"
         >${level}</button>
       `;
     }).join("");
@@ -171,6 +185,7 @@
       <div class="match-field">
         <span class="match-label">Nível do computador</span>
         <div class="match-level-picker">${levelButtons}</div>
+        <small class="match-help">1 aleatório · 4 seguro · 6 blefe controlado · 8 tático.</small>
       </div>
     `;
   }
@@ -231,7 +246,7 @@
       try {
         await app.createOnlineLobby(kind, config);
       } catch (error) {
-        app.openDialog("Nao foi possivel criar a sala", `<p>${app.esc(error.message)}</p>`);
+        app.openDialog("Nao foi possivel criar a sala", `<p>${app.esc(app.errorMsg(error.message))}</p>`);
       }
     });
   }
@@ -382,43 +397,9 @@
   }
 
   function renderQrCode(text) {
-    const size = 21;
-    const cells = [];
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        cells.push(`<span class="invite-qr-cell${qrFill(text, x, y, size) ? " filled" : ""}"></span>`);
-      }
-    }
-    return `<div class="invite-qr" aria-hidden="true">${cells.join("")}</div>`;
-  }
-
-  function qrFill(text, x, y, size) {
-    const finder = finderFill(x, y, size);
-    if (finder != null) return finder;
-
-    let seed = 17;
-    for (const char of text) seed = (seed * 31 + char.charCodeAt(0)) >>> 0;
-    const value = (seed + x * 73 + y * 151 + x * y * 19) % 13;
-    return value < 5 || ((x + y + seed) % 9 === 0);
-  }
-
-  function finderFill(x, y, size) {
-    const origins = [
-      [0, 0],
-      [size - 7, 0],
-      [0, size - 7],
-    ];
-
-    for (const [ox, oy] of origins) {
-      if (x < ox || x > ox + 6 || y < oy || y > oy + 6) continue;
-      const dx = x - ox;
-      const dy = y - oy;
-      const outer = dx === 0 || dx === 6 || dy === 0 || dy === 6;
-      const inner = dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4;
-      return outer || inner;
-    }
-
-    return null;
+    return `<div class="invite-qr-live">
+      <img src="/api/qr?data=${encodeURIComponent(text)}" alt="QR code do convite" />
+    </div>`;
   }
 
   Object.assign(app, {

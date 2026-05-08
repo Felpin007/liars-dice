@@ -7,3 +7,17 @@
 @import url("./menu.css");
 @import url("./game.css");
 @import url("./dialog.css");
+
+body.reduce-motion *,
+body.reduce-motion *::before,
+body.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+body.compact-ui .menu-surface,
+body.compact-ui .panel-section,
+body.compact-ui .rail-card {
+  padding-block: 12px;
+}

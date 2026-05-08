@@ -14,6 +14,7 @@
       },
     });
     if (payload.snapshot) applyServerMatchSnapshot(payload.snapshot);
+    app.playSound?.(action.type === "bid" ? "bid" : action.type === "dudo" ? "dudo" : "reveal");
   }
 
   function setupSeatMappingFromSnapshot(snapshot) {
@@ -148,6 +149,8 @@
         }
       : { currentSeat: null, startedAt: 0, startedRemainingMs: 0 };
 
+    const previousMatch = app.getMatch?.();
+    const previousDebug = previousMatch?.matchId === snapshot.matchId ? previousMatch.debugTrace : null;
     const match = app.setMatch({
       matchId: snapshot.matchId,
       authoritative: true,
@@ -176,7 +179,10 @@
       _revealAll: snapshot.revealAll,
       lastAction: remapAction(snapshot.lastAction),
       timeoutResolvingSeat: null,
+      debugTrace: previousDebug || null,
     });
+    if (!match.debugTrace) app.initMatchDebug?.(match, "online", { snapshot: true });
+    app.recordDebugSnapshot?.(match, snapshot);
 
     app.refreshLiveClock();
     renderServerLog(snapshot.log);
@@ -192,8 +198,10 @@
           : outcome.type === "calza_resolved" ? "calza"
             : "timeout";
         UI.playRevealSequence?.(match, outcome, kind).then(() => {
+          app.playSound?.("reveal");
           if (app.getMatch()?.matchId === match.matchId && app.getMatch()?.phase === "ended") {
             UI.showMatchResult?.(app.getMatch(), { localSeat: 0 });
+            app.playSound?.(match.winnerSeat === 0 ? "win" : "loss");
           }
         });
       }
@@ -203,6 +211,8 @@
         ? match.players[match.winnerSeat].name
         : "-";
       if (!outcome) UI.showMatchResult?.(match, { localSeat: 0 });
+      app.recordDebugMatchEnd?.(match);
+      if (!outcome) app.playSound?.(match.winnerSeat === 0 ? "win" : "loss");
       if (app.state.account.refreshAfterMatchId !== snapshot.matchId) {
         app.state.account.refreshAfterMatchId = snapshot.matchId;
         window.setTimeout(() => app.refreshAccount?.(), 1800);

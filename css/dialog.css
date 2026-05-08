@@ -54,10 +54,19 @@ dialog::backdrop {
 }
 
 .match-config-modal,
-.invite-result {
+.invite-result,
+.settings-shell {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.settings-shell label:not(.match-field) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  color: #e8d2ad;
 }
 
 .match-config-grid {
@@ -96,6 +105,12 @@ dialog::backdrop {
   font-weight: 700;
   color: #e7c27c;
   letter-spacing: .02em;
+}
+
+.match-help {
+  color: #bfa77f;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .match-select,

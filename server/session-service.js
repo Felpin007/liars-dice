@@ -107,10 +107,15 @@ function createClient(preferredName, persistentProfile = null) {
     displayName: persistentProfile?.displayName || "",
     avatarUrl: persistentProfile?.avatarUrl || "",
     supabaseUserId: persistentProfile?.id || null,
+    rating: persistentProfile?.rating || 1500,
+    ratingDeviation: persistentProfile?.ratingDeviation || 350,
+    level: persistentProfile?.level || 1,
+    xp: persistentProfile?.xp || 0,
     lastSeenAt: Date.now(),
     streams: new Set(),
     currentRoomCode: null,
     queueEntryId: null,
+    activeMatchId: null,
     notifications: [],
   };
   state.clients.set(id, client);
@@ -123,6 +128,10 @@ function attachPersistentProfile(client, persistentProfile = null) {
   client.username = persistentProfile.username || client.username;
   client.displayName = persistentProfile.displayName || client.displayName || "";
   client.avatarUrl = persistentProfile.avatarUrl || client.avatarUrl || "";
+  client.rating = persistentProfile.rating || client.rating || 1500;
+  client.ratingDeviation = persistentProfile.ratingDeviation || client.ratingDeviation || 350;
+  client.level = persistentProfile.level || client.level || 1;
+  client.xp = persistentProfile.xp || client.xp || 0;
   touchClient(client);
   return client;
 }
@@ -157,6 +166,16 @@ function createSession(client) {
 function deleteSessionsForClient(clientId) {
   for (const [sessionId, session] of state.sessions.entries()) {
     if (session.clientId === clientId) state.sessions.delete(sessionId);
+  }
+}
+
+function deleteSessionsForSupabaseUser(supabaseUserId) {
+  if (!supabaseUserId) return;
+  for (const client of state.clients.values()) {
+    if (client.supabaseUserId !== supabaseUserId) continue;
+    deleteSessionsForClient(client.id);
+    detachPersistentProfile(client);
+    client.username = uniqueUsername("Conta excluída");
   }
 }
 
@@ -231,6 +250,7 @@ module.exports = {
   detachPersistentProfile,
   touchClient,
   deleteSessionsForClient,
+  deleteSessionsForSupabaseUser,
   getSessionFromRequest,
   ensureAuthenticatedClient,
   requireAuthenticatedClient,

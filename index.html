@@ -47,6 +47,7 @@
           <path d="M15 17H5.5a1 1 0 0 1-.8-1.6l1.3-1.8V10a6 6 0 1 1 12 0v3.6l1.3 1.8A1 1 0 0 1 18.5 17H15"></path>
           <path d="M10 19a2 2 0 0 0 4 0"></path>
         </svg>
+        <span id="notification-badge" class="notification-badge hidden">0</span>
       </button>
     </div>
     <nav id="game-nav" class="nav hidden">
@@ -55,6 +56,7 @@
       <button id="btn-rules" class="btn">Regras</button>
       <button id="btn-fair" class="btn hidden">Fair-play</button>
       <button id="btn-ldn" class="btn hidden">LDN</button>
+      <button id="btn-debug-export" class="btn hidden">Debug</button>
       <label class="mode-toggle hidden" id="wrap-toggle-3d">
         <span>3D</span>
         <input type="checkbox" id="toggle-3d" />
@@ -297,6 +299,11 @@
                 </button>
               </div>
 
+              <label class="quickmatch-ranked-toggle">
+                <input id="quickmatch-ranked" type="checkbox" />
+                <span>Buscar ranqueada</span>
+              </label>
+
               <button id="btn-play" class="btn btn-primary quickmatch-cta">Encontrar partida</button>
 
               <div class="quickmatch-footnote">
@@ -404,7 +411,7 @@
             <div>
               <h2>Amigos</h2>
             </div>
-            <button class="rail-link-btn" type="button">Ver todos</button>
+            <button id="friends-open" class="rail-link-btn" type="button">Ver todos</button>
           </div>
 
           <div class="friends-list">
@@ -438,14 +445,14 @@
         </label>
         <label>Dificuldade
           <select id="cfg-level">
-            <option value="1">Nível 1 · Novato</option>
-            <option value="2">Nível 2 · Aprendiz</option>
-            <option value="3" selected>Nível 3 · Casual</option>
-            <option value="4">Nível 4 · Estável</option>
-            <option value="5">Nível 5 · Intermediário</option>
-            <option value="6">Nível 6 · Avançado</option>
-            <option value="7">Nível 7 · Mestre</option>
-            <option value="8">Nível 8 · Elite</option>
+            <option value="1">Nível 1 · Aleatório</option>
+            <option value="2">Nível 2 · Heurístico fraco</option>
+            <option value="3" selected>Nível 3 · Probabilidade básica</option>
+            <option value="4">Nível 4 · Probabilidade segura</option>
+            <option value="5">Nível 5 · Blefe oportunista</option>
+            <option value="6">Nível 6 · Blefe controlado</option>
+            <option value="7">Nível 7 · Adaptativo</option>
+            <option value="8">Nível 8 · Tático</option>
           </select>
         </label>
         <label>Dados iniciais
@@ -591,7 +598,10 @@
   <script src="js/ldn.js" defer></script>
   <script src="js/ui.js" defer></script>
   <script src="js/app.core.js" defer></script>
+  <script src="js/app.debug.js" defer></script>
+  <script src="js/app.settings.js" defer></script>
   <script src="js/app.supabase.js" defer></script>
+  <script src="js/app.social.js" defer></script>
   <script src="js/app.online.api.js" defer></script>
   <script src="js/app.online.match.js" defer></script>
   <script src="js/app.online.rooms.js" defer></script>

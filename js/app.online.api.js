@@ -137,7 +137,11 @@
     if (snapshot.currentRoom) {
       app.onlineRooms.syncRoomDialog(snapshot.currentRoom, app.absoluteInviteLink(snapshot.currentRoom.code));
     }
+    if (snapshot.activeMatch?.authoritative && snapshot.activeMatch.snapshot) {
+      window.setTimeout(() => app.onlineMatch?.launchAuthoritativeMatch(snapshot.activeMatch), 0);
+    }
     app.refreshAccount?.().catch((error) => console.warn("Perfil persistente indisponivel:", error));
+    app.refreshSocial?.().catch((error) => console.warn("Social indisponivel:", error));
   }
 
   app.onlineCommon = {

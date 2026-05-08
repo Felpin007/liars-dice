@@ -56,7 +56,7 @@
   }
 
   function qrImage(link) {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(link)}`;
+    return `/api/qr?data=${encodeURIComponent(link)}`;
   }
 
   function roomSummaryChips(room) {

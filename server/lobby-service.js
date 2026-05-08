@@ -17,6 +17,7 @@ const {
 } = require("./session-service");
 const { broadcast, pushToClient } = require("./realtime");
 const persistence = require("./persistence-service");
+const runtime = require("./runtime-service");
 
 const RESOLUTION_REVEAL_MS = 13000;
 
@@ -156,6 +157,7 @@ function joinRoom(client, code) {
   const room = state.rooms.get(code);
   if (!room) return { error: "Sala não encontrada." };
   if (room.status !== "waiting") return { error: "Essa sala não aceita mais entradas." };
+  if (room.config.matchType === "ranqueada" && !client.supabaseUserId) return { error: "login_required" };
   if (room.members.some((member) => member.clientId === client.id)) {
     touchClient(client);
     pushRoomUpdate(room);
@@ -210,6 +212,15 @@ function deliverInvite(fromClient, room, targetUsername) {
   if (!normalized) return { delivered: false };
   const target = activeClients().find((client) => client.username.toLowerCase() === normalized);
   if (!target) return { delivered: false };
+  if (target.supabaseUserId) {
+    require("./social-service").createNotification(
+      target.supabaseUserId,
+      "invite_received",
+      "Convite recebido",
+      `${fromClient.username} enviou um convite.`,
+      { roomCode: room.code, from: fromClient.username }
+    ).catch((error) => console.warn("[notifications] invite failed", error.message));
+  }
   pushToClient(target.id, "invite.received", {
     room: publicRoomSummary(room),
     from: fromClient.username,
@@ -226,11 +237,16 @@ function queueEntryPayload(entry) {
     modeKey: entry.modeKey,
     minutes: entry.minutes,
     increment: entry.increment,
+    matchType: entry.matchType || "amistosa",
     joinedAt: entry.joinedAt,
   };
 }
 
 function upsertQueueEntry(client, body) {
+  const matchType = body.matchType === "ranqueada" ? "ranqueada" : "amistosa";
+  if (matchType === "ranqueada" && !client.supabaseUserId) {
+    return { error: "login_required" };
+  }
   state.queue = state.queue.filter((entry) => entry.clientId !== client.id);
   const entry = {
     id: randomId("q_"),
@@ -240,6 +256,9 @@ function upsertQueueEntry(client, body) {
     modeKey: safeText(body.modeKey, "quick-5-0"),
     minutes: Math.max(1, Math.min(30, Number(body.minutes) || 5)),
     increment: Math.max(0, Math.min(30, Number(body.increment) || 0)),
+    matchType,
+    rating: Number(client.rating || body.rating || 1500),
+    ratingDeviation: Number(client.ratingDeviation || body.ratingDeviation || 350),
     joinedAt: Date.now(),
   };
   state.queue.push(entry);
@@ -268,8 +287,9 @@ function processQueue() {
   const grouped = new Map();
   const dispatchedMatches = new Map();
   for (const entry of state.queue) {
-    if (!grouped.has(entry.modeKey)) grouped.set(entry.modeKey, []);
-    grouped.get(entry.modeKey).push(entry);
+    const groupKey = `${entry.modeKey}|${entry.matchType || "amistosa"}`;
+    if (!grouped.has(groupKey)) grouped.set(groupKey, []);
+    grouped.get(groupKey).push(entry);
   }
 
   for (const entries of grouped.values()) {
@@ -277,9 +297,18 @@ function processQueue() {
     while (entries.length) {
       const oldest = entries[0];
       const waitMs = Date.now() - oldest.joinedAt;
-      if (entries.length < 2 && waitMs < QUICKMATCH_BOT_FILL_MS) break;
-
-      const picked = entries.splice(0, Math.min(entries.length, QUICKMATCH_TARGET_PLAYERS));
+      let picked;
+      if (oldest.matchType === "ranqueada") {
+        if (entries.length < 2) break;
+        const window = 120 + Math.floor(waitMs / 15_000) * 50;
+        const compatible = entries.filter((entry) => Math.abs((entry.rating || 1500) - (oldest.rating || 1500)) <= window);
+        if (compatible.length < 2) break;
+        picked = compatible.slice(0, Math.min(compatible.length, QUICKMATCH_TARGET_PLAYERS));
+        for (const entry of picked) entries.splice(entries.indexOf(entry), 1);
+      } else {
+        if (entries.length < 2 && waitMs < QUICKMATCH_BOT_FILL_MS) break;
+        picked = entries.splice(0, Math.min(entries.length, QUICKMATCH_TARGET_PLAYERS));
+      }
       for (const delivery of dispatchQueuedMatch(picked)) {
         dispatchedMatches.set(delivery.clientId, delivery.payload);
       }
@@ -302,12 +331,30 @@ function publicMatchPayload(match) {
     modeKey: match.modeKey,
     minutes: match.minutes,
     increment: match.increment,
+    matchType: match.matchType || "amistosa",
     playerNames: match.players.map((player) => player.name),
     humanPlayers: match.humanPlayers,
     botSeats: match.botSeats,
     botNames: match.botSeats.map((seat) => match.players[seat]?.name).filter(Boolean),
     startSeat: match.startSeat,
     autoFilledWithBots: match.botSeats.length > 0,
+  };
+}
+
+function activeMatchPayloadForClient(client) {
+  if (!client?.activeMatchId) return null;
+  const match = state.matches.get(client.activeMatchId);
+  if (!match) {
+    client.activeMatchId = null;
+    return null;
+  }
+  if (!GameServer.humanClientIds(match).includes(client.id)) {
+    client.activeMatchId = null;
+    return null;
+  }
+  return {
+    ...publicMatchPayload(match),
+    snapshot: GameServer.viewForClient(match, client.id),
   };
 }
 
@@ -323,12 +370,15 @@ function pushMatchSnapshot(match, eventName = "match.snapshot") {
 function scheduleAuthoritativeMatch(match) {
   clearMatchTimer(match.id);
   if (match.phase === "ended") {
+    if (match.persistedAt) return;
     persistence.persistFinishedMatch(match).catch((error) => {
       console.warn("[persistence] match save failed", error.message);
       match.persistedAt = null;
     });
     return;
   }
+
+  if (runtime.isEnabled()) return;
 
   if (match.phase === "resolving") {
     const timer = setTimeout(() => {
@@ -380,9 +430,14 @@ function createAuthoritativeMatch(options) {
     botSeats: options.botSeats,
     startSeat: options.startSeat,
     botLevel: options.botLevel,
+    matchType: options.matchType,
     config: options.config,
   });
   state.matches.set(match.id, match);
+  for (const clientId of GameServer.humanClientIds(match)) {
+    const client = state.clients.get(clientId);
+    if (client) client.activeMatchId = match.id;
+  }
   scheduleAuthoritativeMatch(match);
   return match;
 }
@@ -393,6 +448,10 @@ function startRoomMatch(client, code) {
   if (room.hostClientId !== client.id) return { error: "Somente o host pode iniciar a sala." };
   if (room.status !== "waiting") return { error: "Essa sala já foi iniciada." };
   if (!room.members.length) return { error: "Sala vazia." };
+  if (room.config.matchType === "ranqueada") {
+    if (room.members.length < room.maxPlayers) return { error: "Ranqueada exige mesa completa sem bots." };
+    if (!room.members.every((member) => member.supabaseUserId)) return { error: "Ranqueada exige jogadores logados." };
+  }
 
   const humanPlayers = room.members.map((member, seat) => ({
     clientId: member.clientId,
@@ -420,6 +479,7 @@ function startRoomMatch(client, code) {
     modeKey: `${room.config.gameType}-${room.config.minutes}-${room.config.increment}`,
     minutes: room.config.minutes,
     increment: room.config.increment,
+    matchType: room.config.matchType,
     playerNames,
     humanPlayers,
     botSeats,
@@ -467,6 +527,7 @@ function dispatchQueuedMatch(entries) {
     modeKey: entries[0].modeKey,
     minutes: entries[0].minutes,
     increment: entries[0].increment,
+    matchType: entries[0].matchType || "amistosa",
     playerNames,
     humanPlayers,
     botSeats,
@@ -485,6 +546,47 @@ function dispatchQueuedMatch(entries) {
 
   emitHomeUpdate();
   return deliveries;
+}
+
+function advanceMatchIfDue(match, now = Date.now()) {
+  let changed = false;
+  let guard = 0;
+  while (match && guard++ < 12) {
+    const before = `${match.phase}:${match.round}:${match.seq}:${match.turnSeat}`;
+    if (match.phase === "resolving") {
+      if (now - (match.updatedAt || now) < RESOLUTION_REVEAL_MS) break;
+      GameServer.startRound(match, now);
+    } else if (match.phase === "bidding") {
+      const actor = GameServer.currentActor(match);
+      if (!actor) break;
+      if (actor.isBot) {
+        GameServer.applyAction(match, actor.seat, GameServer.chooseBotAction(match, actor.seat), now);
+      } else if (GameServer.timeRemaining(match, now) <= 0) {
+        GameServer.resolveTimeout(match, actor.seat, now);
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+    changed = true;
+    match.updatedAt = now;
+    if (match.phase === "ended") {
+      scheduleAuthoritativeMatch(match);
+      break;
+    }
+    if (`${match.phase}:${match.round}:${match.seq}:${match.turnSeat}` === before) break;
+  }
+  if (changed) runtime.markDirty();
+  return changed;
+}
+
+function advanceDueMatches() {
+  let changed = false;
+  for (const match of state.matches.values()) {
+    if (advanceMatchIfDue(match)) changed = true;
+  }
+  return changed;
 }
 
 function buildSnapshot(client, session = null) {
@@ -508,6 +610,7 @@ function buildSnapshot(client, session = null) {
     currentRoom: client.currentRoomCode && state.rooms.has(client.currentRoomCode)
       ? roomDetails(state.rooms.get(client.currentRoomCode), client.id)
       : null,
+    activeMatch: activeMatchPayloadForClient(client),
   };
 }
 
@@ -536,6 +639,9 @@ function cleanupState() {
     if (now - match.createdAt > MATCH_TTL_MS) {
       clearMatchTimer(matchId);
       state.matches.delete(matchId);
+      for (const client of state.clients.values()) {
+        if (client.activeMatchId === matchId) client.activeMatchId = null;
+      }
     }
   }
 
@@ -578,8 +684,11 @@ module.exports = {
   upsertQueueEntry,
   removeQueueEntry,
   publicMatchPayload,
+  activeMatchPayloadForClient,
   pushMatchSnapshot,
   scheduleAuthoritativeMatch,
+  advanceDueMatches,
+  advanceMatchIfDue,
   buildSnapshot,
   cleanupState,
   getRoom,

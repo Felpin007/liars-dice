@@ -557,9 +557,13 @@ const UI = (() => {
       <strong>${won ? "Você ficou por último na mesa." : `${esc(winner?.name || "Ninguem")} venceu a partida.`}</strong>
       <p>${won ? "Boa leitura: todos os outros jogadores ficaram sem dados." : "A partida acabou quando restou apenas um jogador com dados."}</p>
       <div class="match-result-actions">
+        <button type="button" class="btn" data-match-debug>Exportar debug</button>
         <button type="button" class="btn btn-primary" data-match-menu>Voltar ao menu</button>
       </div>`;
     table.appendChild(card);
+    card.querySelector("[data-match-debug]")?.addEventListener("click", () => {
+      window.LDAApp?.openDebugExportDialog?.();
+    });
     card.querySelector("[data-match-menu]")?.addEventListener("click", () => {
       window.LDAApp?.showMenu?.();
     });

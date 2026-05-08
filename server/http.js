@@ -49,7 +49,9 @@ function clientAddress(req) {
 function rateLimit(req, res, pathname) {
   if (!pathname.startsWith("/api/")) return false;
   const now = Date.now();
-  const key = `${clientAddress(req)}:${pathname}`;
+  const category = rateLimitCategory(req.method, pathname);
+  const limit = category.limit;
+  const key = `${clientAddress(req)}:${category.key}`;
   const entry = state.rateLimits.get(key) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
   if (now > entry.resetAt) {
     entry.count = 0;
@@ -57,12 +59,22 @@ function rateLimit(req, res, pathname) {
   }
   entry.count += 1;
   state.rateLimits.set(key, entry);
-  res.setHeader("RateLimit-Limit", String(RATE_LIMIT_MAX_REQUESTS));
-  res.setHeader("RateLimit-Remaining", String(Math.max(0, RATE_LIMIT_MAX_REQUESTS - entry.count)));
+  res.setHeader("RateLimit-Limit", String(limit));
+  res.setHeader("RateLimit-Remaining", String(Math.max(0, limit - entry.count)));
   res.setHeader("RateLimit-Reset", String(Math.ceil(entry.resetAt / 1000)));
-  if (entry.count <= RATE_LIMIT_MAX_REQUESTS) return false;
+  if (entry.count <= limit) return false;
   json(res, 429, { error: "rate_limited" });
   return true;
+}
+
+function rateLimitCategory(method, pathname) {
+  if (pathname === "/api/bootstrap") return { key: "bootstrap", limit: 60 };
+  if (pathname === "/api/snapshot" || /^\/api\/match\/[^/]+$/.test(pathname)) return { key: "polling", limit: 180 };
+  if (pathname === "/api/rooms" && method === "POST") return { key: "rooms-create", limit: 30 };
+  if (/^\/api\/match\/[^/]+\/action$/.test(pathname)) return { key: "match-action", limit: 120 };
+  if (pathname === "/api/me") return { key: "profile", limit: 60 };
+  if (pathname === "/api/reports") return { key: "reports", limit: 20 };
+  return { key: pathname, limit: RATE_LIMIT_MAX_REQUESTS };
 }
 
 function recordAudit(req, type, details = {}) {

@@ -2,10 +2,14 @@
   "name": "liars-dice-arena",
   "version": "0.2.0",
   "private": true,
-  "description": "Protótipo local de Liar's Dice Arena com backend zero-deps para lobby, convites e matchmaking.",
+  "description": "Beta de Liar's Dice Arena com lobby, convites, matchmaking, Supabase e deploy Vercel.",
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
     "test": "node scripts/smoke-test.js"
+  },
+  "dependencies": {
+    "leo-profanity": "1.9.0",
+    "qrcode": "1.5.4"
   }
 }

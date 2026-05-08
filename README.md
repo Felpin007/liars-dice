@@ -1,6 +1,6 @@
 # Liar's Dice Arena
 
-Protótipo jogável de uma arena online de **Liar's Dice** inspirado na clareza, velocidade e espírito aberto de plataformas como lichess. O projeto combina modo local contra bots, lobby online, convites por link, pareamento rápido, partidas autoritativas e integração opcional com Supabase para login, perfil, avatar, rating e histórico.
+Beta jogável de uma arena online de **Liar's Dice** inspirado na clareza, velocidade e espírito aberto de plataformas como lichess. O projeto combina modo local contra bots, lobby online, convites por link, pareamento rápido, partidas autoritativas e integração opcional com Supabase para login, perfil, avatar, amigos, notificações, progressão, rating e histórico.
 
 ## Estado do projeto
 
@@ -19,13 +19,17 @@ Este repositório ainda está em fase inicial, mas já possui uma base funcional
 - partidas online com servidor autoritativo;
 - login com Google via Supabase Auth;
 - perfil persistente com avatar;
-- rating e estatísticas persistidas;
+- amigos por solicitação, inbox de notificações e reports;
+- XP, nível e estatísticas persistidas;
+- rating ranqueado com Glicko-2 MVP;
 - histórico recente de partidas;
 - RNG com commit-reveal para verificação de fair-play;
 - exportação de partida em LDN;
-- smoke test para sintaxe e fluxo autoritativo básico.
+- QR local real para convites;
+- configurações locais com áudio sintético;
+- smoke test para sintaxe, fluxo autoritativo, social, moderação, QR, bots e rating.
 
-Ainda não é uma aplicação pronta para produção. Faltam reconexão robusta, moderação, testes amplos, regras de rating mais maduras e infraestrutura de deploy.
+O alvo atual é uma beta pública inicial na Vercel, para baixa escala, com Supabase como estado compartilhado. Antes de promover produção, rode o schema completo, configure as variáveis de ambiente e valide `/api/health`.
 
 ## Como rodar
 
@@ -33,7 +37,13 @@ Requisitos:
 
 - Node.js 18 ou superior.
 
-Instale nada: o projeto atual continua sem dependências npm obrigatórias.
+Instale as dependências fixadas:
+
+```bash
+npm install
+```
+
+Depois inicie o servidor:
 
 ```bash
 npm start
@@ -57,14 +67,22 @@ npm run dev
 npm test
 ```
 
-O teste atual valida:
+O smoke test atual valida:
 
 - sintaxe dos arquivos JavaScript em `server/` e `js/`;
 - criação de uma partida autoritativa;
 - visão privada por jogador;
 - lance básico;
 - resolução de Dudo;
-- revelação do seed ao final do round.
+- revelação do seed ao final do round;
+- pedidos de amizade, aceite, recusa e cooldown;
+- notificações e marcação de leitura;
+- XP, nível e Glicko-2 em partida ranqueada elegível;
+- fila ranqueada exigindo login e janela de rating;
+- bloqueio de links/termos moderados em perfil/report;
+- QR real gerado pelo backend;
+- settings locais e áudio sintético respeitando mute/volume;
+- diferença de decisão entre bots avançados.
 
 ## Estrutura
 
@@ -82,7 +100,7 @@ O teste atual valida:
 
 ## Backend
 
-O backend fica em `server/` e usa apenas módulos nativos do Node.js. Ele oferece:
+O backend fica em `server/` e usa Node.js com poucas dependências focadas em QR e moderação. Ele oferece:
 
 - servidor HTTP;
 - rotas REST sob `/api`;
@@ -94,6 +112,7 @@ O backend fica em `server/` e usa apenas módulos nativos do Node.js. Ele oferec
 - salas, convites e fila;
 - partidas autoritativas;
 - persistência opcional em Supabase;
+- amigos, notificações, reports, XP e rating ranqueado;
 - limpeza periódica de clientes, salas, sessões e partidas expiradas.
 
 Por padrão, o servidor escuta em:
@@ -125,9 +144,12 @@ Com Supabase configurado, o projeto habilita:
 - nome de usuário;
 - bio;
 - imagem de perfil;
-- rating inicial de 1000;
+- XP e nível;
+- rating inicial de 1500, RD 350 e volatilidade 0.06;
+- amigos e notificações persistentes;
 - vitórias, derrotas, partidas e sequência;
 - histórico recente;
+- exclusão definitiva de conta com limpeza de dados pessoais;
 - persistência de partidas finalizadas;
 - registro de ações da partida para replay/auditoria futura.
 
@@ -141,7 +163,7 @@ Com Supabase configurado, o projeto habilita:
 supabase/schema.sql
 ```
 
-Esse script cria as tabelas `profiles`, `matches`, `match_players`, `match_actions`, ativa RLS de leitura e cria o bucket público `avatars`.
+Esse script cria as tabelas de perfil, partidas, runtime, reports, amigos e notificações, ativa RLS onde aplicável e cria o bucket público `avatars`.
 
 3. Ative login com Google:
 
@@ -177,6 +199,8 @@ https://seu-projeto.vercel.app
 ```env
 PORT=8080
 SESSION_SECRET=troque-por-um-segredo-longo
+PUBLIC_BASE_URL=http://localhost:8080
+CRON_SECRET=troque-por-outro-segredo-longo
 SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_ANON_KEY=sua-anon-key
 SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
@@ -191,6 +215,25 @@ npm start
 
 8. Abra o site e clique no chip de perfil no topo. O modal deve mostrar o botão **Entrar com Google**.
 
+9. Valide o diagnóstico local:
+
+```text
+http://localhost:8080/api/health
+```
+
+O bloco `persistence` deve indicar `configured: true`, `profilesTable: true`, `matchesTables: true`, `socialTables: true` e `avatarBucket: true`.
+Para um deploy publico na Vercel, o bloco `runtime.tables` tambem deve indicar as tabelas de runtime e `productionReady` deve ser `true`.
+
+### Checklist para Vercel manual
+
+- Configure as variáveis de ambiente do `.env.example` no projeto da Vercel.
+- Rode novamente `supabase/schema.sql`; ele cria tambem `sessions`, `presence`, `rooms`, `queue_entries`, `active_matches` e `reports`.
+- Configure `PUBLIC_BASE_URL` com a URL publica e `CRON_SECRET` com um segredo longo.
+- Adicione a URL de produção em **Supabase > Authentication > URL Configuration**.
+- Adicione a URL de callback do Supabase no cliente OAuth do Google.
+- Rode `/api/health` no deploy e confira `productionReady: true`.
+- Faça login, salve perfil com avatar, jogue uma partida e confira o histórico.
+
 ### Segurança das chaves
 
 `SUPABASE_ANON_KEY` pode ir para o browser. `SUPABASE_SERVICE_ROLE_KEY` nunca pode ir para o cliente.
@@ -199,7 +242,9 @@ O servidor usa a service role apenas no backend para:
 
 - criar/atualizar perfis;
 - salvar partidas finalizadas;
-- atualizar rating e estatísticas.
+- atualizar XP, rating e estatísticas;
+- criar pedidos de amizade, amizades, notificações e reports;
+- excluir conta pelo endpoint autenticado do backend.
 
 O arquivo `.env` é ignorado pelo Git e o servidor estático bloqueia acesso a dotfiles e arquivos sensíveis.
 
@@ -259,16 +304,26 @@ npm test
 
 Executa o smoke test.
 
+## Runtime Vercel
+
+Em Vercel, o backend roda como Function Node e usa Supabase como estado compartilhado de runtime. O cliente sincroniza lobby e partidas por polling:
+
+- `/api/snapshot` atualiza lobby, fila, sala e partida ativa;
+- `/api/match/:id` atualiza a partida autoritativa;
+- `/api/cron/cleanup` limpa dados expirados e exige `CRON_SECRET`;
+- SSE continua disponível no servidor local, mas não é o caminho principal em produção Vercel.
+
+Bots, timeout e passagem de round sao resolvidos de forma lazy quando uma action, polling ou cron toca a partida.
+
 ## Limitações conhecidas
 
-- estado mantido apenas em memória;
-- lobby, fila e presença ainda ficam em memória;
-- rating ainda usa regra simples de protótipo;
+- o runtime publico inicial mira baixa escala e usa Supabase como estado compartilhado;
+- polling substitui realtime permanente em produção Vercel;
+- Glicko-2 é MVP, ainda sem temporadas, pools separados ou anti-abuso sofisticado;
 - login/perfil dependem de Supabase configurado;
-- sem reconexão robusta;
+- reconexão depende dos snapshots de runtime ainda dentro do TTL;
 - sem testes end-to-end;
-- sem deploy configurado;
-- sem fluxo completo de moderação;
+- moderação inicial bloqueia links/termos básicos e tem reports, mas sem painel operacional completo;
 - sem internacionalização formal.
 
 ## Convenções atuais
@@ -285,9 +340,10 @@ Executa o smoke test.
 - padronizar enums internos em inglês;
 - centralizar mensagens da UI;
 - melhorar reconexão de partida;
-- substituir rating simples por Elo/Glicko;
-- mover lobby/fila/presença para Redis ou serviço equivalente;
-- preparar deploy experimental.
+- separar pools/temporadas de rating;
+- adicionar painel de moderação;
+- avaliar Redis/Upstash ou game server dedicado conforme escala;
+- automatizar checklist de preview Vercel.
 
 ## Licença
 

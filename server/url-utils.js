@@ -1,5 +1,5 @@
 const os = require("node:os");
-const { PORT } = require("./config");
+const { PORT, PUBLIC_BASE_URL } = require("./config");
 
 function isHttpsRequest(req) {
   return String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim() === "https" || Boolean(req.socket.encrypted);
@@ -41,6 +41,7 @@ function absoluteBaseUrl(req) {
 }
 
 function publicBaseUrl(req) {
+  if (PUBLIC_BASE_URL) return PUBLIC_BASE_URL;
   const base = new URL(absoluteBaseUrl(req));
   if (isLoopbackHostname(base.hostname)) {
     const lanAddress = lanIpv4Address();
