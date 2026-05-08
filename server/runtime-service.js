@@ -17,6 +17,7 @@ const TABLES = {
   matches: "active_matches",
   reports: "reports",
 };
+const QUEUE_TTL_MS = 15 * 60 * 1000;
 let dirty = false;
 
 function isEnabled() {
@@ -164,11 +165,7 @@ function rowsForState() {
   return { sessions, presence, rooms, queue, matches };
 }
 
-async function replaceTable(table, rows, conflictTarget, deleteQuery) {
-  await persistence.supabaseFetch(persistence.restUrl(table, deleteQuery), {
-    method: "DELETE",
-    headers: persistence.serviceHeaders({ Prefer: "return=minimal" }),
-  });
+async function upsertRows(table, rows, conflictTarget) {
   if (!rows.length) return;
   await persistence.supabaseFetch(persistence.restUrl(table, `on_conflict=${conflictTarget}`), {
     method: "POST",
@@ -184,11 +181,11 @@ async function persistState() {
   dirty = false;
   const rows = rowsForState();
   await Promise.all([
-    replaceTable(TABLES.sessions, rows.sessions, "id", "id=not.is.null"),
-    replaceTable(TABLES.presence, rows.presence, "client_id", "client_id=not.is.null"),
-    replaceTable(TABLES.rooms, rows.rooms, "code", "code=not.is.null"),
-    replaceTable(TABLES.queue, rows.queue, "id", "id=not.is.null"),
-    replaceTable(TABLES.matches, rows.matches, "id", "id=not.is.null"),
+    upsertRows(TABLES.sessions, rows.sessions, "id"),
+    upsertRows(TABLES.presence, rows.presence, "client_id"),
+    upsertRows(TABLES.rooms, rows.rooms, "code"),
+    upsertRows(TABLES.queue, rows.queue, "id"),
+    upsertRows(TABLES.matches, rows.matches, "id"),
   ]);
   return true;
 }
@@ -197,6 +194,7 @@ async function cleanupRuntimeTables() {
   if (!isEnabled()) return { enabled: false };
   const now = toIso(Date.now());
   const stalePresence = toIso(Date.now() - CLIENT_TTL_MS);
+  const staleQueue = toIso(Date.now() - QUEUE_TTL_MS);
   const deletions = [
     persistence.supabaseFetch(persistence.restUrl(TABLES.sessions, `expires_at=lt.${encodeURIComponent(now)}`), {
       method: "DELETE",
@@ -207,6 +205,10 @@ async function cleanupRuntimeTables() {
       headers: persistence.serviceHeaders({ Prefer: "return=minimal" }),
     }),
     persistence.supabaseFetch(persistence.restUrl(TABLES.rooms, `expires_at=lt.${encodeURIComponent(now)}`), {
+      method: "DELETE",
+      headers: persistence.serviceHeaders({ Prefer: "return=minimal" }),
+    }),
+    persistence.supabaseFetch(persistence.restUrl(TABLES.queue, `joined_at=lt.${encodeURIComponent(staleQueue)}`), {
       method: "DELETE",
       headers: persistence.serviceHeaders({ Prefer: "return=minimal" }),
     }),

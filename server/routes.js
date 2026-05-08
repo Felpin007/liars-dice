@@ -56,6 +56,9 @@ function buildSnapshotForRequest(client, session, req) {
   snapshot.links = {
     inviteOrigin: publicBaseUrl(req),
   };
+  snapshot.runtime = {
+    pollingOnly: runtime.isEnabled(),
+  };
   return snapshot;
 }
 

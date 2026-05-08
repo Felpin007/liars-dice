@@ -231,7 +231,7 @@
       app.onlineCommon.applySnapshot(snapshot);
       if (options.reconnectOnly) return snapshot;
       localStorage.removeItem("lda.clientId");
-      connectEvents();
+      if (!app.state.online.pollingOnly) connectEvents();
       startPolling();
       startHeartbeat();
       app.onlineRooms.handleInviteRoute();

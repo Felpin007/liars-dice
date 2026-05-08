@@ -137,6 +137,7 @@
     renderRooms(snapshot.rooms);
     app.state.online.currentQueue = snapshot.queue || null;
     app.state.online.currentRoom = snapshot.currentRoom || null;
+    app.state.online.pollingOnly = Boolean(snapshot.runtime?.pollingOnly);
 
     if (snapshot.currentRoom) {
       app.onlineRooms.syncRoomDialog(snapshot.currentRoom, app.absoluteInviteLink(snapshot.currentRoom.code));
