@@ -335,12 +335,14 @@ async function handleApi(req, res, pathname) {
       return true;
     }
     const room = lobby.createRoom(client, body.kind === "challenge" ? "challenge" : "room", config);
-    json(res, 200, {
+    const payload = {
       room: lobby.roomDetails(room, client.id),
       link: inviteLink(req, room.code),
       links: { inviteOrigin: publicBaseUrl(req) },
       stats: lobby.statsPayload(),
-    });
+    };
+    if (runtime.isEnabled()) await runtime.persistState();
+    json(res, 200, payload);
     return true;
   }
 
@@ -354,12 +356,14 @@ async function handleApi(req, res, pathname) {
       json(res, 400, { error: result.error });
       return true;
     }
-    json(res, 200, {
+    const payload = {
       room: lobby.roomDetails(result.room, client.id),
       link: inviteLink(req, result.room.code),
       links: { inviteOrigin: publicBaseUrl(req) },
       stats: lobby.statsPayload(),
-    });
+    };
+    if (runtime.isEnabled()) await runtime.persistState();
+    json(res, 200, payload);
     return true;
   }
 
@@ -369,6 +373,7 @@ async function handleApi(req, res, pathname) {
     if (!auth) return true;
     const { client } = auth;
     lobby.leaveRoom(client, roomLeaveMatch[1]);
+    if (runtime.isEnabled()) await runtime.persistState();
     json(res, 200, { ok: true, stats: lobby.statsPayload(), rooms: lobby.listPublicRooms() });
     return true;
   }
@@ -383,11 +388,13 @@ async function handleApi(req, res, pathname) {
       json(res, 400, { error: result.error });
       return true;
     }
-    json(res, 200, {
+    const payload = {
       ...lobby.publicMatchPayload(result.match),
       snapshot: GameServer.viewForClient(result.match, client.id),
       stats: lobby.statsPayload(),
-    });
+    };
+    if (runtime.isEnabled()) await runtime.persistState();
+    json(res, 200, payload);
     return true;
   }
 
