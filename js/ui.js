@@ -185,7 +185,7 @@ const UI = (() => {
         </div>
         <div class="seat-side">
           <span class="seat-time player-time" data-seat="${p.seat}">${CLOCK_ICON} ${formatTime(playerTimeLeft(m, p.seat))}</span>
-          <span class="dice-count">${p.dice.length}</span>
+          <span class="dice-count">${p.diceCount ?? p.dice.length}</span>
         </div>`;
       ul.appendChild(li);
     }
@@ -218,13 +218,20 @@ const UI = (() => {
     const meta = $("#last-action-meta");
     const bid = m.currentBid || (m.bidHistory.length ? m.bidHistory[m.bidHistory.length - 1] : null);
     if (!bid) {
-      el.innerHTML = `<div class="last-action-empty">—</div>`;
+      if (el.dataset.bidKey !== "empty") {
+        el.innerHTML = `<div class="last-action-empty">—</div>`;
+        el.dataset.bidKey = "empty";
+      }
       if (meta) meta.textContent = "";
       return;
     }
 
     const actor = m.players[bid.seat];
-    el.innerHTML = `<div class="last-action-value">${renderBidMarkup(bid, { wildAces: m.config.wildAces, mini: false })}</div>`;
+    const bidKey = `${bid.q}|${bid.v}|${bid.seat}|${m.config.wildAces ? 1 : 0}`;
+    if (el.dataset.bidKey !== bidKey) {
+      el.innerHTML = `<div class="last-action-value">${renderBidMarkup(bid, { wildAces: m.config.wildAces, mini: false })}</div>`;
+      el.dataset.bidKey = bidKey;
+    }
     if (meta) meta.textContent = actor ? ` - ${actor.name}` : "";
   }
 
@@ -539,6 +546,7 @@ const UI = (() => {
     await countdownUntil(Date.now() + 10_000, (seconds) => {
       if (nextEl) nextEl.textContent = String(seconds);
     });
+    window.LDAApp?.pollActiveMatchNow?.();
     overlay.remove();
   }
 

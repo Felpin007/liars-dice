@@ -19,7 +19,7 @@ const { broadcast, pushToClient } = require("./realtime");
 const persistence = require("./persistence-service");
 const runtime = require("./runtime-service");
 
-const RESOLUTION_REVEAL_MS = 13000;
+const RESOLUTION_REVEAL_MS = 10000;
 
 function statsPayload() {
   const activeClientIds = new Set(activeClients().map((client) => client.id));

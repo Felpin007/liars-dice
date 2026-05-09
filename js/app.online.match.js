@@ -123,12 +123,18 @@
         timeLeftMs: 0,
         lastActionTimeMs: 0,
       };
+      const sourceDice = Array.isArray(source.dice)
+        ? source.dice.slice()
+        : new Array(source.diceCount || 0).fill(0);
+      const displayDice = snapshot.phase === "resolving" && Number.isInteger(source.diceCount)
+        ? sourceDice.slice(0, source.diceCount)
+        : sourceDice;
       return {
         id: localSeat,
         seat: localSeat,
         serverSeat,
         name: localSeat === 0 ? "Você" : source.name,
-        dice: Array.isArray(source.dice) ? source.dice.slice() : new Array(source.diceCount || 0).fill(0),
+        dice: displayDice,
         diceCount: source.diceCount,
         alive: source.alive,
         isBot: source.isBot,
