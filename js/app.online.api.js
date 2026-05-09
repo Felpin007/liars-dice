@@ -125,6 +125,22 @@
     });
   }
 
+  function renderPendingActiveMatch(match) {
+    const button = app.$("#hero-resume-match");
+    if (!button) return;
+    const hasMatch = Boolean(match?.authoritative && match.snapshot);
+    button.classList.toggle("hidden", !hasMatch);
+    if (!hasMatch) return;
+    const copy = app.$("#resume-match-copy");
+    if (copy) {
+      const round = match.snapshot.round ? `Round ${match.snapshot.round}` : "Mesa em andamento";
+      const phase = match.snapshot.phase === "resolving" ? "revelando dados"
+        : match.snapshot.phase === "ended" ? "encerrada"
+          : "em andamento";
+      copy.textContent = `${round} · ${phase}.`;
+    }
+  }
+
   function applySnapshot(snapshot) {
     if (!snapshot) return;
     if (snapshot.security?.csrfToken) {
@@ -144,7 +160,14 @@
       app.onlineRooms.syncRoomDialog(snapshot.currentRoom, app.absoluteInviteLink(snapshot.currentRoom.code));
     }
     if (snapshot.activeMatch?.authoritative && snapshot.activeMatch.snapshot) {
-      window.setTimeout(() => app.onlineMatch?.launchAuthoritativeMatch(snapshot.activeMatch), 0);
+      app.state.online.pendingActiveMatch = snapshot.activeMatch;
+      renderPendingActiveMatch(snapshot.activeMatch);
+      if (app.state.online.authoritative && app.state.online.activeMatchId === snapshot.activeMatch.matchId) {
+        app.onlineMatch?.applyServerMatchSnapshot(snapshot.activeMatch.snapshot);
+      }
+    } else {
+      app.state.online.pendingActiveMatch = null;
+      renderPendingActiveMatch(null);
     }
     app.refreshAccount?.().catch((error) => console.warn("Perfil persistente indisponivel:", error));
     app.refreshSocial?.().catch((error) => console.warn("Social indisponivel:", error));
@@ -157,6 +180,7 @@
     setStats,
     setInviteOriginFromLink,
     renderRooms,
+    renderPendingActiveMatch,
     applySnapshot,
   };
 

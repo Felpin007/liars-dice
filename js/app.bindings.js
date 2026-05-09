@@ -102,6 +102,12 @@
     app.$("#hero-challenge-friend")?.addEventListener("click", () => app.openFeatureModal("friend"));
     app.$("#hero-play-bot")?.addEventListener("click", () => app.openFeatureModal("bot"));
     app.$("#hero-tutorial")?.addEventListener("click", () => app.openTutorial());
+    app.$("#hero-resume-match")?.addEventListener("click", () => {
+      const pending = app.state.online.pendingActiveMatch;
+      if (pending?.authoritative && pending.snapshot) {
+        app.onlineMatch.launchAuthoritativeMatch(pending);
+      }
+    });
     app.$("#menu-profile-chip")?.addEventListener("click", () => app.openProfileDialog());
     app.$(".menu-bell-btn")?.addEventListener("click", () => app.openNotificationsDialog?.());
     app.$("#friends-open")?.addEventListener("click", () => app.openFriendsDialog?.());

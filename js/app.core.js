@@ -36,6 +36,7 @@ window.LDAApp = (() => {
       authoritative: false,
       lastSnapshotSeq: 0,
       lastRevealKey: "",
+      pendingActiveMatch: null,
       localToServerSeat: null,
       serverToLocalSeat: null,
     },
