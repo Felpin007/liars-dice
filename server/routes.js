@@ -523,6 +523,7 @@ async function handleApi(req, res, pathname) {
     }
     lobby.pushMatchSnapshot(match);
     lobby.scheduleAuthoritativeMatch(match);
+    if (runtime.isEnabled()) await runtime.persistState();
     json(res, 200, {
       ok: true,
       snapshot: GameServer.viewForClient(match, client.id),
