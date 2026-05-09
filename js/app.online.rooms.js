@@ -11,6 +11,7 @@
       },
     });
     app.state.online.currentRoom = payload.room;
+    app.state.online.waitingRoomCode = payload.room?.code || "";
     if (payload.link) app.onlineCommon.setInviteOriginFromLink(payload.link);
     if (payload.links?.inviteOrigin) app.state.online.inviteOrigin = payload.links.inviteOrigin;
     renderRoomDialog(payload.room, payload.link);
@@ -22,6 +23,7 @@
       method: "POST",
     });
     app.state.online.currentRoom = payload.room;
+    app.state.online.waitingRoomCode = payload.room?.code || code;
     if (payload.link) app.onlineCommon.setInviteOriginFromLink(payload.link);
     if (payload.links?.inviteOrigin) app.state.online.inviteOrigin = payload.links.inviteOrigin;
     if (!options.silent) renderRoomDialog(payload.room, payload.link);
@@ -33,12 +35,14 @@
       method: "POST",
     });
     app.state.online.currentRoom = null;
+    app.state.online.waitingRoomCode = "";
   }
 
   async function startOnlineRoom(code) {
     const payload = await app.api(`/api/rooms/${encodeURIComponent(code)}/start`, {
       method: "POST",
     });
+    app.state.online.waitingRoomCode = "";
     app.onlineMatch.launchAuthoritativeMatch(payload);
     return payload;
   }

@@ -238,6 +238,7 @@
     app.state.busy = false;
     app.state.timeoutLock = false;
     app.state.online.activeMatchId = payload.matchId;
+    app.state.online.waitingRoomCode = "";
     app.state.online.activeSession = activeSession;
     app.state.online.authoritative = true;
     app.state.online.lastSnapshotSeq = -1;
@@ -274,6 +275,7 @@
     });
 
     app.state.online.activeMatchId = payload.matchId;
+    app.state.online.waitingRoomCode = "";
     app.state.online.activeSession = app.state.sessionId + 1;
     app.state.online.localToServerSeat = localToServerSeat;
     app.state.online.serverToLocalSeat = serverToLocalSeat;

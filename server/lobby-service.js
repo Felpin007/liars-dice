@@ -397,8 +397,18 @@ function attachClientToMatch(match, client) {
 }
 
 function activeMatchPayloadForClient(client) {
-  if (!client?.activeMatchId) return null;
-  const match = state.matches.get(client.activeMatchId);
+  if (!client) return null;
+  let match = client.activeMatchId ? state.matches.get(client.activeMatchId) : null;
+  if (!match) {
+    match = Array.from(state.matches.values()).find((candidate) => (
+      candidate.phase !== "ended"
+      && Date.now() - candidate.createdAt <= MATCH_TTL_MS
+      && candidate.humanPlayers.some((player) => (
+        player.clientId === client.id
+        || (client.supabaseUserId && player.supabaseUserId === client.supabaseUserId)
+      ))
+    )) || null;
+  }
   if (!match) {
     client.activeMatchId = null;
     return null;

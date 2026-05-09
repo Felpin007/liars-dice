@@ -143,7 +143,7 @@
 
   function applySnapshot(snapshot) {
     if (!snapshot) return;
-    const wasWaitingForMatch = Boolean(app.state.online.currentRoom || app.state.online.currentQueue);
+    const wasWaitingForMatch = Boolean(app.state.online.waitingRoomCode || app.state.online.currentRoom || app.state.online.currentQueue);
     if (snapshot.security?.csrfToken) {
       app.state.online.csrfToken = snapshot.security.csrfToken;
     }
@@ -155,6 +155,7 @@
     renderRooms(snapshot.rooms);
     app.state.online.currentQueue = snapshot.queue || null;
     app.state.online.currentRoom = snapshot.currentRoom || null;
+    if (snapshot.currentRoom?.code) app.state.online.waitingRoomCode = snapshot.currentRoom.code;
     app.state.online.pollingOnly = Boolean(snapshot.runtime?.pollingOnly);
 
     if (snapshot.currentRoom) {
@@ -166,6 +167,7 @@
       if (app.state.online.authoritative && app.state.online.activeMatchId === snapshot.activeMatch.matchId) {
         app.onlineMatch?.applyServerMatchSnapshot(snapshot.activeMatch.snapshot);
       } else if (wasWaitingForMatch && !app.state.online.activeMatchId) {
+        app.state.online.waitingRoomCode = "";
         window.setTimeout(() => app.onlineMatch?.launchAuthoritativeMatch(snapshot.activeMatch), 0);
       }
     } else {

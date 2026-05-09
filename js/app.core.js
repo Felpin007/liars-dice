@@ -20,6 +20,7 @@ window.LDAApp = (() => {
       stats: { online: 0, matches: 0 },
       rooms: [],
       currentRoom: null,
+      waitingRoomCode: "",
       currentQueue: null,
       eventSource: null,
       reconnectTimer: null,
