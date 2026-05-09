@@ -336,7 +336,7 @@ async function handleApi(req, res, pathname) {
     }
     const room = lobby.createRoom(client, body.kind === "challenge" ? "challenge" : "room", config);
     const payload = {
-      room: lobby.roomDetails(room, client.id),
+      room: lobby.roomDetails(room, client),
       link: inviteLink(req, room.code),
       links: { inviteOrigin: publicBaseUrl(req) },
       stats: lobby.statsPayload(),
@@ -357,7 +357,7 @@ async function handleApi(req, res, pathname) {
       return true;
     }
     const payload = {
-      room: lobby.roomDetails(result.room, client.id),
+      room: lobby.roomDetails(result.room, client),
       link: inviteLink(req, result.room.code),
       links: { inviteOrigin: publicBaseUrl(req) },
       stats: lobby.statsPayload(),
@@ -408,7 +408,7 @@ async function handleApi(req, res, pathname) {
       return true;
     }
     json(res, 200, {
-      room: lobby.roomDetails(room, client ? client.id : null),
+      room: lobby.roomDetails(room, client),
       link: inviteLink(req, room.code),
       links: { inviteOrigin: publicBaseUrl(req) },
       stats: lobby.statsPayload(),

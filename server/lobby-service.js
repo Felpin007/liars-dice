@@ -47,7 +47,9 @@ function publicRoomSummary(room) {
   };
 }
 
-function roomDetails(room, viewerId) {
+function roomDetails(room, viewer = null) {
+  const viewerId = typeof viewer === "object" ? viewer?.id : viewer;
+  const viewerSupabaseUserId = typeof viewer === "object" ? viewer?.supabaseUserId : null;
   return {
     ...publicRoomSummary(room),
     linkPath: `/invite/${room.code}`,
@@ -57,10 +59,31 @@ function roomDetails(room, viewerId) {
       avatarUrl: member.avatarUrl || "",
       isHost: member.clientId === room.hostClientId,
     })),
-    canJoin: room.status === "waiting" && room.members.length < room.maxPlayers && !room.members.some((member) => member.clientId === viewerId),
-    isMember: room.members.some((member) => member.clientId === viewerId),
-    isHost: room.hostClientId === viewerId,
+    canJoin: room.status === "waiting" && room.members.length < room.maxPlayers && !room.members.some((member) => (
+      member.clientId === viewerId || (viewerSupabaseUserId && member.supabaseUserId === viewerSupabaseUserId)
+    )),
+    isMember: room.members.some((member) => member.clientId === viewerId || (viewerSupabaseUserId && member.supabaseUserId === viewerSupabaseUserId)),
+    isHost: room.hostClientId === viewerId || Boolean(room.hostSupabaseUserId && viewerSupabaseUserId && room.hostSupabaseUserId === viewerSupabaseUserId),
   };
+}
+
+function isRoomHost(room, client) {
+  if (!room || !client) return false;
+  if (room.hostClientId === client.id) return true;
+  if (room.hostSupabaseUserId && client.supabaseUserId && room.hostSupabaseUserId === client.supabaseUserId) return true;
+  const hostMember = room.members.find((member) => member.clientId === room.hostClientId);
+  return Boolean(hostMember?.supabaseUserId && client.supabaseUserId && hostMember.supabaseUserId === client.supabaseUserId);
+}
+
+function attachClientToExistingMember(room, client) {
+  if (!room || !client?.supabaseUserId) return;
+  const member = room.members.find((candidate) => candidate.supabaseUserId === client.supabaseUserId);
+  if (!member) return;
+  if (room.hostClientId === member.clientId) room.hostClientId = client.id;
+  member.clientId = client.id;
+  member.username = client.username || member.username;
+  member.avatarUrl = client.avatarUrl || member.avatarUrl || "";
+  client.currentRoomCode = room.code;
 }
 
 function listPublicRooms() {
@@ -116,6 +139,7 @@ function createRoom(client, kind, config) {
     updatedAt: Date.now(),
     status: "waiting",
     hostClientId: client.id,
+    hostSupabaseUserId: client.supabaseUserId || null,
     hostName: client.username,
     hostAvatarUrl: client.avatarUrl || "",
     maxPlayers: maxPlayersForType(config.gameType),
@@ -158,6 +182,7 @@ function joinRoom(client, code) {
   if (!room) return { error: "Sala não encontrada." };
   if (room.status !== "waiting") return { error: "Essa sala não aceita mais entradas." };
   if (room.config.matchType === "ranqueada" && !client.supabaseUserId) return { error: "login_required" };
+  attachClientToExistingMember(room, client);
   if (room.members.some((member) => member.clientId === client.id)) {
     touchClient(client);
     pushRoomUpdate(room);
@@ -197,6 +222,7 @@ function leaveRoom(client, code) {
   } else {
     if (room.hostClientId === client.id) {
       room.hostClientId = room.members[0].clientId;
+      room.hostSupabaseUserId = room.members[0].supabaseUserId || null;
       room.hostName = room.members[0].username;
       room.hostAvatarUrl = room.members[0].avatarUrl || "";
       room.title = buildRoomTitle(room.kind, room.hostName);
@@ -445,7 +471,8 @@ function createAuthoritativeMatch(options) {
 function startRoomMatch(client, code) {
   const room = state.rooms.get(code);
   if (!room) return { error: "Sala não encontrada." };
-  if (room.hostClientId !== client.id) return { error: "Somente o host pode iniciar a sala." };
+  attachClientToExistingMember(room, client);
+  if (!isRoomHost(room, client)) return { error: "Somente o host pode iniciar a sala." };
   if (room.status !== "waiting") return { error: "Essa sala já foi iniciada." };
   if (!room.members.length) return { error: "Sala vazia." };
   if (room.config.matchType === "ranqueada") {
@@ -608,7 +635,7 @@ function buildSnapshot(client, session = null) {
     rooms: listPublicRooms(),
     queue: queuedEntry ? queueEntryPayload(queuedEntry) : null,
     currentRoom: client.currentRoomCode && state.rooms.has(client.currentRoomCode)
-      ? roomDetails(state.rooms.get(client.currentRoomCode), client.id)
+      ? roomDetails(state.rooms.get(client.currentRoomCode), client)
       : null,
     activeMatch: activeMatchPayloadForClient(client),
   };
