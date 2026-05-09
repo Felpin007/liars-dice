@@ -81,7 +81,14 @@ function setSessionCookie(req, res, session) {
 
 function activeClients() {
   const now = Date.now();
-  return Array.from(state.clients.values()).filter((client) => now - client.lastSeenAt <= CLIENT_TTL_MS);
+  const clients = Array.from(state.clients.values()).filter((client) => now - client.lastSeenAt <= CLIENT_TTL_MS);
+  const byIdentity = new Map();
+  for (const client of clients) {
+    const key = client.supabaseUserId ? `u:${client.supabaseUserId}` : `c:${client.id}`;
+    const existing = byIdentity.get(key);
+    if (!existing || client.lastSeenAt > existing.lastSeenAt) byIdentity.set(key, client);
+  }
+  return Array.from(byIdentity.values());
 }
 
 function normalizeName(name) {
@@ -210,14 +217,25 @@ function getSessionFromRequest(req, res = null) {
   return { client, session };
 }
 
-function ensureAuthenticatedClient(req, res, preferredName, persistentProfile = null) {
+function ensureAuthenticatedClient(req, res, preferredName, persistentProfile = null, options = {}) {
   const existing = getSessionFromRequest(req, res);
   if (existing) {
     attachPersistentProfile(existing.client, persistentProfile);
     return existing;
   }
 
-  const client = createClient(preferredName, persistentProfile);
+  let client = null;
+  if (options.clientId && state.clients.has(options.clientId)) {
+    client = state.clients.get(options.clientId);
+    attachPersistentProfile(client, persistentProfile);
+  }
+  if (persistentProfile?.id) {
+    client = client || Array.from(state.clients.values())
+      .filter((candidate) => candidate.supabaseUserId === persistentProfile.id)
+      .sort((left, right) => (right.lastSeenAt || 0) - (left.lastSeenAt || 0))[0] || null;
+    if (client) attachPersistentProfile(client, persistentProfile);
+  }
+  if (!client) client = createClient(preferredName, persistentProfile);
   const session = createSession(client);
   setSessionCookie(req, res, session);
   recordAudit(req, "session_created", { clientId: client.id });

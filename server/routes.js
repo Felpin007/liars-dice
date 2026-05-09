@@ -29,6 +29,11 @@ async function persistentProfileFromBody(body) {
   }
 }
 
+function safeClientId(value) {
+  const text = safeText(value, "").slice(0, 80);
+  return /^c_[A-Za-z0-9_-]+$/.test(text) ? text : "";
+}
+
 async function authenticatedAccountFromBearer(req, res) {
   const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
   if (!match) return null;
@@ -109,7 +114,9 @@ async function handleApi(req, res, pathname) {
   if (req.method === "POST" && pathname === "/api/bootstrap") {
     const body = await readBody(req);
     const persistentProfile = await persistentProfileFromBody(body);
-    const { client, session } = ensureAuthenticatedClient(req, res, body.username, persistentProfile);
+    const { client, session } = ensureAuthenticatedClient(req, res, body.username, persistentProfile, {
+      clientId: safeClientId(body.clientId),
+    });
     if (!persistentProfile) detachPersistentProfile(client);
     const snapshot = buildSnapshotForRequest(client, session, req);
     if (runtime.isEnabled()) {
@@ -373,7 +380,10 @@ async function handleApi(req, res, pathname) {
     if (!auth) return true;
     const { client } = auth;
     lobby.leaveRoom(client, roomLeaveMatch[1]);
-    if (runtime.isEnabled()) await runtime.persistState();
+    if (runtime.isEnabled()) {
+      if (!lobby.getRoom(roomLeaveMatch[1])) await runtime.deleteRooms([roomLeaveMatch[1]]);
+      await runtime.persistState();
+    }
     json(res, 200, { ok: true, stats: lobby.statsPayload(), rooms: lobby.listPublicRooms() });
     return true;
   }
@@ -393,7 +403,10 @@ async function handleApi(req, res, pathname) {
       snapshot: GameServer.viewForClient(result.match, client.id),
       stats: lobby.statsPayload(),
     };
-    if (runtime.isEnabled()) await runtime.persistState();
+    if (runtime.isEnabled()) {
+      await runtime.deleteRooms([roomStartMatch[1]]);
+      await runtime.persistState();
+    }
     json(res, 200, payload);
     return true;
   }

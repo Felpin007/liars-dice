@@ -22,10 +22,16 @@ const runtime = require("./runtime-service");
 const RESOLUTION_REVEAL_MS = 13000;
 
 function statsPayload() {
-  const activeMatches = Array.from(state.matches.values()).filter((match) => Date.now() - match.createdAt <= MATCH_TTL_MS);
+  const activeClientIds = new Set(activeClients().map((client) => client.id));
+  const activeRooms = Array.from(state.rooms.values()).filter((room) => room.members.some((member) => activeClientIds.has(member.clientId)));
+  const activeMatches = Array.from(state.matches.values()).filter((match) => (
+    match.phase !== "ended"
+    && Date.now() - match.createdAt <= MATCH_TTL_MS
+    && match.humanPlayers.some((player) => activeClientIds.has(player.clientId))
+  ));
   return {
-    online: activeClients().length,
-    matches: state.rooms.size + activeMatches.length,
+    online: activeClientIds.size,
+    matches: activeRooms.length + activeMatches.length,
   };
 }
 

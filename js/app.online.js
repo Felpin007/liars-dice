@@ -223,6 +223,7 @@
         method: "POST",
         body: {
           username: preferredName,
+          clientId: localStorage.getItem("lda.clientId") || "",
           supabaseAccessToken,
         },
       });
@@ -230,7 +231,6 @@
       app.state.online.backendAvailable = true;
       app.onlineCommon.applySnapshot(snapshot);
       if (options.reconnectOnly) return snapshot;
-      localStorage.removeItem("lda.clientId");
       if (!app.state.online.pollingOnly) connectEvents();
       startPolling();
       startHeartbeat();

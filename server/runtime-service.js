@@ -61,7 +61,21 @@ async function hydrateState() {
     readTable(TABLES.matches, `expires_at=gt.${encodeURIComponent(toIso(now))}&select=*`),
   ]);
 
+  const presenceRows = [];
+  const seenProfiles = new Map();
   for (const row of presence) {
+    if (!row.supabase_user_id) {
+      presenceRows.push(row);
+      continue;
+    }
+    const existing = seenProfiles.get(row.supabase_user_id);
+    if (!existing || fromIso(row.last_seen_at, 0) > fromIso(existing.last_seen_at, 0)) {
+      seenProfiles.set(row.supabase_user_id, row);
+    }
+  }
+  presenceRows.push(...seenProfiles.values());
+
+  for (const row of presenceRows) {
     state.clients.set(row.client_id, {
       id: row.client_id,
       username: row.username,
@@ -176,6 +190,32 @@ async function upsertRows(table, rows, conflictTarget) {
   });
 }
 
+async function deleteRows(table, column, values) {
+  if (!isEnabled()) return false;
+  const uniqueValues = Array.from(new Set((values || []).filter(Boolean)));
+  if (!uniqueValues.length) return false;
+  await persistence.supabaseFetch(persistence.restUrl(
+    table,
+    `${column}=in.(${uniqueValues.map((value) => `"${String(value).replace(/"/g, '\\"')}"`).join(",")})`
+  ), {
+    method: "DELETE",
+    headers: persistence.serviceHeaders({ Prefer: "return=minimal" }),
+  });
+  return true;
+}
+
+function deleteRooms(codes) {
+  return deleteRows(TABLES.rooms, "code", codes);
+}
+
+function deleteQueueEntries(ids) {
+  return deleteRows(TABLES.queue, "id", ids);
+}
+
+function deleteMatches(ids) {
+  return deleteRows(TABLES.matches, "id", ids);
+}
+
 async function persistState() {
   if (!isEnabled()) return false;
   dirty = false;
@@ -279,6 +319,9 @@ module.exports = {
   isDirty,
   hydrateState,
   persistState,
+  deleteRooms,
+  deleteQueueEntries,
+  deleteMatches,
   cleanupRuntimeTables,
   createReport,
   healthStatus,

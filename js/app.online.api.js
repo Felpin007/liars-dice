@@ -57,6 +57,7 @@
     app.state.online.username = profile.username;
     app.state.online.avatarUrl = profile.avatarUrl || "";
     localStorage.setItem(STORAGE_USERNAME, profile.username);
+    localStorage.setItem("lda.clientId", profile.clientId);
     if (!app.state.account.profile) {
       const nameEl = app.$("#menu-profile-name");
       const rankEl = app.$("#menu-profile-rank");
