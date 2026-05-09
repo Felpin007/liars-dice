@@ -116,6 +116,30 @@ async function hydrateState() {
   return true;
 }
 
+async function hydrateRoom(code) {
+  if (!isEnabled() || !code) return null;
+  const rows = await readTable(
+    TABLES.rooms,
+    `code=eq.${encodeURIComponent(code)}&expires_at=gt.${encodeURIComponent(toIso(Date.now()))}&select=*&limit=1`
+  );
+  const row = rows[0];
+  if (!row?.data?.code) return null;
+  state.rooms.set(row.code, row.data);
+  return row.data;
+}
+
+async function hydrateMatch(matchId) {
+  if (!isEnabled() || !matchId) return null;
+  const rows = await readTable(
+    TABLES.matches,
+    `id=eq.${encodeURIComponent(matchId)}&expires_at=gt.${encodeURIComponent(toIso(Date.now()))}&select=*&limit=1`
+  );
+  const row = rows[0];
+  if (!row?.data?.id) return null;
+  state.matches.set(row.id, row.data);
+  return row.data;
+}
+
 function markDirty() {
   dirty = true;
 }
@@ -318,6 +342,8 @@ module.exports = {
   markDirty,
   isDirty,
   hydrateState,
+  hydrateRoom,
+  hydrateMatch,
   persistState,
   deleteRooms,
   deleteQueueEntries,

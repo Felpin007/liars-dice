@@ -67,6 +67,14 @@ function buildSnapshotForRequest(client, session, req) {
   return snapshot;
 }
 
+async function getRoomWithRuntimeFallback(code) {
+  return lobby.getRoom(code) || (runtime.isEnabled() ? runtime.hydrateRoom(code) : null);
+}
+
+async function getMatchWithRuntimeFallback(matchId) {
+  return lobby.getMatch(matchId) || (runtime.isEnabled() ? runtime.hydrateMatch(matchId) : null);
+}
+
 async function handleApi(req, res, pathname) {
   if (req.method === "GET" && pathname === "/api/config") {
     json(res, 200, {
@@ -358,7 +366,9 @@ async function handleApi(req, res, pathname) {
     const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     const { client } = auth;
-    const result = lobby.joinRoom(client, roomJoinMatch[1]);
+    const code = roomJoinMatch[1];
+    await getRoomWithRuntimeFallback(code);
+    const result = lobby.joinRoom(client, code);
     if (result.error) {
       json(res, 400, { error: result.error });
       return true;
@@ -393,7 +403,9 @@ async function handleApi(req, res, pathname) {
     const auth = await requireAccountClient(req, res);
     if (!auth) return true;
     const { client } = auth;
-    const result = lobby.startRoomMatch(client, roomStartMatch[1]);
+    const code = roomStartMatch[1];
+    await getRoomWithRuntimeFallback(code);
+    const result = lobby.startRoomMatch(client, code);
     if (result.error) {
       json(res, 400, { error: result.error });
       return true;
@@ -404,7 +416,7 @@ async function handleApi(req, res, pathname) {
       stats: lobby.statsPayload(),
     };
     if (runtime.isEnabled()) {
-      await runtime.deleteRooms([roomStartMatch[1]]);
+      await runtime.deleteRooms([code]);
       await runtime.persistState();
     }
     json(res, 200, payload);
@@ -415,7 +427,7 @@ async function handleApi(req, res, pathname) {
   if (req.method === "GET" && roomInfoMatch) {
     const auth = getSessionFromRequest(req, res);
     const client = auth ? auth.client : null;
-    const room = lobby.getRoom(roomInfoMatch[1]);
+    const room = await getRoomWithRuntimeFallback(roomInfoMatch[1]);
     if (!room) {
       json(res, 404, { error: "room_not_found" });
       return true;
@@ -435,7 +447,7 @@ async function handleApi(req, res, pathname) {
     if (!auth) return true;
     const body = await readBody(req);
     const { client } = auth;
-    const room = lobby.getRoom(roomInviteMatch[1]);
+    const room = await getRoomWithRuntimeFallback(roomInviteMatch[1]);
     if (!room) {
       json(res, 404, { error: "not_found" });
       return true;
@@ -483,7 +495,7 @@ async function handleApi(req, res, pathname) {
     const auth = await requireAccountClient(req, res, { csrf: false });
     if (!auth) return true;
     const { client } = auth;
-    const match = lobby.getMatch(matchInfoMatch[1]);
+    const match = await getMatchWithRuntimeFallback(matchInfoMatch[1]);
     const player = match ? lobby.attachClientToMatch(match, client) : null;
     if (!match || !player) {
       json(res, 404, { error: "not_found" });
@@ -504,7 +516,7 @@ async function handleApi(req, res, pathname) {
     if (!auth) return true;
     const body = await readBody(req);
     const { client } = auth;
-    const match = lobby.getMatch(matchActionMatch[1]);
+    const match = await getMatchWithRuntimeFallback(matchActionMatch[1]);
     if (!match) {
       json(res, 404, { error: "not_found" });
       return true;
