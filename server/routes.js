@@ -471,11 +471,13 @@ async function handleApi(req, res, pathname) {
     if (!auth) return true;
     const { client } = auth;
     const match = lobby.getMatch(matchInfoMatch[1]);
-    if (!match || !GameServer.humanClientIds(match).includes(client.id)) {
+    const player = match ? lobby.attachClientToMatch(match, client) : null;
+    if (!match || !player) {
       json(res, 404, { error: "not_found" });
       return true;
     }
     lobby.advanceMatchIfDue(match);
+    if (runtime.isEnabled()) await runtime.persistState();
     json(res, 200, {
       ...lobby.publicMatchPayload(match),
       snapshot: GameServer.viewForClient(match, client.id),
@@ -495,7 +497,7 @@ async function handleApi(req, res, pathname) {
       return true;
     }
     lobby.advanceMatchIfDue(match);
-    const sender = match.humanPlayers.find((player) => player.clientId === client.id);
+    const sender = lobby.attachClientToMatch(match, client);
     if (!sender || sender.seat !== body.seat) {
       recordAudit(req, "forbidden", { clientId: client.id, matchId: match.id, reason: "seat_mismatch" });
       json(res, 403, { error: "forbidden" });

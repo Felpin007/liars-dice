@@ -367,6 +367,29 @@ function publicMatchPayload(match) {
   };
 }
 
+function attachClientToMatch(match, client) {
+  if (!match || !client) return null;
+  let human = match.humanPlayers.find((player) => player.clientId === client.id);
+  if (!human && client.supabaseUserId) {
+    human = match.humanPlayers.find((player) => player.supabaseUserId && player.supabaseUserId === client.supabaseUserId);
+  }
+  if (!human) return null;
+
+  human.clientId = client.id;
+  if (client.supabaseUserId) human.supabaseUserId = client.supabaseUserId;
+  if (client.username) human.username = client.username;
+
+  const player = match.players[human.seat];
+  if (player) {
+    player.clientId = client.id;
+    if (client.supabaseUserId) player.supabaseUserId = client.supabaseUserId;
+    if (client.username) player.name = client.username;
+  }
+  client.activeMatchId = match.id;
+  match.updatedAt = Date.now();
+  return human;
+}
+
 function activeMatchPayloadForClient(client) {
   if (!client?.activeMatchId) return null;
   const match = state.matches.get(client.activeMatchId);
@@ -374,7 +397,7 @@ function activeMatchPayloadForClient(client) {
     client.activeMatchId = null;
     return null;
   }
-  if (!GameServer.humanClientIds(match).includes(client.id)) {
+  if (!attachClientToMatch(match, client)) {
     client.activeMatchId = null;
     return null;
   }
@@ -712,6 +735,7 @@ module.exports = {
   removeQueueEntry,
   publicMatchPayload,
   activeMatchPayloadForClient,
+  attachClientToMatch,
   pushMatchSnapshot,
   scheduleAuthoritativeMatch,
   advanceDueMatches,
